@@ -157,7 +157,7 @@ public class PvpExtension extends Extension {
 	public void initialize() {
 		init();
 		
-		getEventNode().addChild(events());
+		//getEventNode().addChild(events());
 	}
 	
 	@Override

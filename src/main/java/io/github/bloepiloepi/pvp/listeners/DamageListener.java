@@ -111,8 +111,14 @@ public class DamageListener {
 	private static int getFallDamage(Player player, double fallDistance, Point landingPosition) {
 		Block block = player.getInstance().getBlock(landingPosition);
 		Block blockAbove = player.getInstance().getBlock(landingPosition.add(0, 1, 0));
+		Block blockBelow = player.getInstance().getBlock(landingPosition.add(0, -1, 0));
 
-		if ((block.compare(Block.SLIME_BLOCK) && !player.isSneaking()) || block.compare(Block.WATER) || blockAbove.compare(Block.WATER)) return 0;
+		if (
+				(block.compare(Block.SLIME_BLOCK) && !player.isSneaking())
+						|| (blockBelow.compare(Block.SLIME_BLOCK) && !player.isSneaking())
+						|| block.compare(Block.WATER)
+						|| blockAbove.compare(Block.WATER)
+		) return 0;
 
 		float reduce = EntityUtils.hasEffect(player, PotionEffect.JUMP_BOOST)
 				? EntityUtils.getEffect(player, PotionEffect.JUMP_BOOST).amplifier() + 1
