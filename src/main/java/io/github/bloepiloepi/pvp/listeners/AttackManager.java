@@ -129,7 +129,9 @@ public class AttackManager {
 		} else {
 			enchantedDamage = EnchantmentUtils.getAttackDamage(player.getItemInMainHand(), EntityGroup.DEFAULT, legacy);
 		}
-		
+
+		if (Tracker.lastAttackedTicks.get(player.getUuid()) < 10) return;
+
 		float i = legacy ? 1.0F : getAttackCooldownProgress(player, 0.5F);
 		damage *= 0.2F + i * i * 0.8F;
 		enchantedDamage *= i;
