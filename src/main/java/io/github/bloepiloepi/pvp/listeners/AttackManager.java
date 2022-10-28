@@ -132,11 +132,7 @@ public class AttackManager {
 			enchantedDamage = EnchantmentUtils.getAttackDamage(player.getItemInMainHand(), EntityGroup.DEFAULT, legacy);
 		}
 
-		System.out.println("last attacked HIT " + Tracker.lastAttackedTicks.get(player.getUuid()));
-		System.out.println("Legacy " + legacy);
 		if (legacy && Tracker.lastAttackedTicks.get(player.getUuid()) < 10) return;
-		System.out.println("abc");
-
 
 		float i = legacy ? 1.0F : getAttackCooldownProgress(player, 0.5F);
 		damage *= 0.2F + i * i * 0.8F;
