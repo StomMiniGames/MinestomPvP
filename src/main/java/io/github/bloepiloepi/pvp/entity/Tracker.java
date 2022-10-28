@@ -135,6 +135,7 @@ public class Tracker {
 			Player player = event.getPlayer();
 			UUID uuid = player.getUuid();
 			Tracker.increaseInt(Tracker.lastAttackedTicks, uuid, 1);
+			System.out.println("last attacked" + Tracker.lastAttackedTicks.get(uuid));
 			
 			if (player.isOnGround()) {
 				Tracker.lastClimbedBlock.remove(uuid);

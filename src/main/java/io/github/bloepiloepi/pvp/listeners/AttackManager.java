@@ -53,7 +53,9 @@ public class AttackManager {
 		
 		node.addListener(EntityAttackEvent.class, event -> entityHit(event.getEntity(), event.getTarget(), legacy));
 		node.addListener(PlayerTickEvent.class, AttackManager::spectateTick);
-		
+
+		LOGGER.info("Registered attack events. Legacy=" + legacy);
+
 		if (!legacy) {
 			node.addListener(EventListener.builder(PlayerHandAnimationEvent.class).handler(event ->
 					resetLastAttackedTicks(event.getPlayer())).build());
@@ -130,7 +132,11 @@ public class AttackManager {
 			enchantedDamage = EnchantmentUtils.getAttackDamage(player.getItemInMainHand(), EntityGroup.DEFAULT, legacy);
 		}
 
-		if (Tracker.lastAttackedTicks.get(player.getUuid()) < 10) return;
+		System.out.println("last attacked HIT " + Tracker.lastAttackedTicks.get(player.getUuid()));
+		System.out.println("Legacy " + legacy);
+		if (legacy && Tracker.lastAttackedTicks.get(player.getUuid()) < 10) return;
+		System.out.println("abc");
+
 
 		float i = legacy ? 1.0F : getAttackCooldownProgress(player, 0.5F);
 		damage *= 0.2F + i * i * 0.8F;
