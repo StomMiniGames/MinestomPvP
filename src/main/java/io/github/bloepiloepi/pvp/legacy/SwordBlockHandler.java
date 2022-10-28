@@ -10,6 +10,7 @@ import net.minestom.server.event.player.PlayerChangeHeldSlotEvent;
 import net.minestom.server.event.player.PlayerHandAnimationEvent;
 import net.minestom.server.event.player.PlayerSwapItemEvent;
 import net.minestom.server.event.player.PlayerUseItemEvent;
+import net.minestom.server.event.trait.InstanceEvent;
 import net.minestom.server.event.trait.PlayerEvent;
 import net.minestom.server.item.ItemStack;
 import net.minestom.server.item.Material;
@@ -17,8 +18,8 @@ import net.minestom.server.item.Material;
 public class SwordBlockHandler {
 	private static final ItemStack SHIELD = ItemStack.of(Material.SHIELD);
 	
-	public static EventNode<PlayerEvent> legacyEvents() {
-		EventNode<PlayerEvent> node = EventNode.type("legacy-sword-block", EventFilter.PLAYER);
+	public static EventNode<InstanceEvent> legacyEvents() {
+		EventNode<InstanceEvent> node = EventNode.type("legacy-sword-block", EventFilter.INSTANCE);
 		
 		node.addListener(EventListener.builder(PlayerUseItemEvent.class)
 				.handler(SwordBlockHandler::handleUseItem)

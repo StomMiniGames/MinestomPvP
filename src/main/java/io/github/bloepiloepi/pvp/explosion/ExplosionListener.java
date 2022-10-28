@@ -14,6 +14,7 @@ import net.minestom.server.event.EventNode;
 import net.minestom.server.event.player.PlayerBlockInteractEvent;
 import net.minestom.server.event.player.PlayerUseItemOnBlockEvent;
 import net.minestom.server.event.trait.EntityEvent;
+import net.minestom.server.event.trait.InstanceEvent;
 import net.minestom.server.instance.Instance;
 import net.minestom.server.instance.block.Block;
 import net.minestom.server.item.ItemStack;
@@ -24,8 +25,8 @@ import org.jglrxavpok.hephaistos.nbt.NBT;
 
 public class ExplosionListener {
 	
-	public static EventNode<EntityEvent> events() {
-		EventNode<EntityEvent> node = EventNode.type("explosion-events", EventFilter.ENTITY);
+	public static EventNode<InstanceEvent> events() {
+		EventNode<InstanceEvent> node = EventNode.type("explosion-events", EventFilter.INSTANCE);
 		
 		node.addListener(PlayerUseItemOnBlockEvent.class, event -> {
 			ItemStack stack = event.getItemStack();

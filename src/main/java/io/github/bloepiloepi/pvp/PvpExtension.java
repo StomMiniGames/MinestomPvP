@@ -20,6 +20,7 @@ import net.minestom.server.entity.Player;
 import net.minestom.server.event.EventFilter;
 import net.minestom.server.event.EventNode;
 import net.minestom.server.event.trait.EntityEvent;
+import net.minestom.server.event.trait.InstanceEvent;
 import net.minestom.server.event.trait.PlayerEvent;
 import net.minestom.server.extensions.Extension;
 import net.minestom.server.item.Material;
@@ -29,8 +30,8 @@ import java.lang.reflect.Field;
 
 public class PvpExtension extends Extension {
 	
-	public static EventNode<EntityEvent> events() {
-		EventNode<EntityEvent> node = EventNode.type("pvp-events", EventFilter.ENTITY);
+	public static EventNode<InstanceEvent> events() {
+		EventNode<InstanceEvent> node = EventNode.type("pvp-events", EventFilter.INSTANCE);
 		
 		node.addChild(attackEvents());
 		node.addChild(damageEvents());
@@ -43,8 +44,8 @@ public class PvpExtension extends Extension {
 		return node;
 	}
 	
-	public static EventNode<EntityEvent> legacyEvents() {
-		EventNode<EntityEvent> node = EventNode.type("legacy-pvp-events", EventFilter.ENTITY);
+	public static EventNode<InstanceEvent> legacyEvents() {
+		EventNode<InstanceEvent> node = EventNode.type("legacy-pvp-events", EventFilter.INSTANCE);
 		
 		node.addChild(AttackManager.events(true));
 		node.addChild(DamageListener.events(true));
@@ -65,7 +66,7 @@ public class PvpExtension extends Extension {
 	 *
 	 * @return The EventNode with attack events
 	 */
-	public static EventNode<EntityEvent> attackEvents() {
+	public static EventNode<InstanceEvent> attackEvents() {
 		return AttackManager.events(false);
 	}
 	
@@ -77,7 +78,7 @@ public class PvpExtension extends Extension {
 	 *
 	 * @return The EventNode with damage events
 	 */
-	public static EventNode<EntityEvent> damageEvents() {
+	public static EventNode<InstanceEvent> damageEvents() {
 		return DamageListener.events(false);
 	}
 	
@@ -87,7 +88,7 @@ public class PvpExtension extends Extension {
 	 *
 	 * @return The EventNode with explosion events
 	 */
-	public static EventNode<EntityEvent> explosionEvents() {
+	public static EventNode<InstanceEvent> explosionEvents() {
 		return ExplosionListener.events();
 	}
 	
@@ -98,7 +99,7 @@ public class PvpExtension extends Extension {
 	 *
 	 * @return The EventNode with armor and tool events
 	 */
-	public static EventNode<EntityEvent> armorToolEvents() {
+	public static EventNode<InstanceEvent> armorToolEvents() {
 		return ArmorToolListener.events(false);
 	}
 	
@@ -108,7 +109,7 @@ public class PvpExtension extends Extension {
 	 *
 	 * @return The EventNode with food events
 	 */
-	public static EventNode<PlayerEvent> foodEvents() {
+	public static EventNode<InstanceEvent> foodEvents() {
 		return FoodListener.events(false);
 	}
 	
@@ -119,7 +120,7 @@ public class PvpExtension extends Extension {
 	 *
 	 * @return The EventNode with potion events
 	 */
-	public static EventNode<EntityEvent> potionEvents() {
+	public static EventNode<InstanceEvent> potionEvents() {
 		return PotionListener.events(false);
 	}
 	
@@ -130,7 +131,7 @@ public class PvpExtension extends Extension {
 	 *
 	 * @return The EventNode with projectile events
 	 */
-	public static EventNode<PlayerEvent> projectileEvents() {
+	public static EventNode<InstanceEvent> projectileEvents() {
 		return ProjectileListener.events(false);
 	}
 	

@@ -13,6 +13,7 @@ import net.minestom.server.event.EventNode;
 import net.minestom.server.event.item.EntityEquipEvent;
 import net.minestom.server.event.player.PlayerChangeHeldSlotEvent;
 import net.minestom.server.event.trait.EntityEvent;
+import net.minestom.server.event.trait.InstanceEvent;
 import net.minestom.server.item.ItemStack;
 
 import java.util.ArrayList;
@@ -22,8 +23,8 @@ import java.util.UUID;
 
 public class ArmorToolListener {
 	
-	public static EventNode<EntityEvent> events(boolean legacy) {
-		EventNode<EntityEvent> node = EventNode.type("armor-tool-events", EventFilter.ENTITY);
+	public static EventNode<InstanceEvent> events(boolean legacy) {
+		EventNode<InstanceEvent> node = EventNode.type("armor-tool-events", EventFilter.INSTANCE);
 		
 		node.addListener(EntityEquipEvent.class, event -> {
 			if (!(event.getEntity() instanceof LivingEntity livingEntity)) return;

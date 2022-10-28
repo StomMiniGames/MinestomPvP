@@ -30,6 +30,7 @@ import net.minestom.server.event.player.PlayerChangeHeldSlotEvent;
 import net.minestom.server.event.player.PlayerHandAnimationEvent;
 import net.minestom.server.event.player.PlayerTickEvent;
 import net.minestom.server.event.trait.EntityEvent;
+import net.minestom.server.event.trait.InstanceEvent;
 import net.minestom.server.network.packet.server.play.EntityAnimationPacket;
 import net.minestom.server.network.packet.server.play.ParticlePacket;
 import net.minestom.server.particle.Particle;
@@ -47,8 +48,8 @@ import java.util.concurrent.ThreadLocalRandom;
 public class AttackManager {
 	private static final Logger LOGGER = LoggerFactory.getLogger(AttackManager.class);
 	
-	public static EventNode<EntityEvent> events(boolean legacy) {
-		EventNode<EntityEvent> node = EventNode.type("attack-events", EventFilter.ENTITY);
+	public static EventNode<InstanceEvent> events(boolean legacy) {
+		EventNode<InstanceEvent> node = EventNode.type("attack-events", EventFilter.INSTANCE);
 		
 		node.addListener(EntityAttackEvent.class, event -> entityHit(event.getEntity(), event.getTarget(), legacy));
 		node.addListener(PlayerTickEvent.class, AttackManager::spectateTick);

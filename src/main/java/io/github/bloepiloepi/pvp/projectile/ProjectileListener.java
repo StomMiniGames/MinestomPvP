@@ -22,6 +22,7 @@ import net.minestom.server.event.item.ItemUpdateStateEvent;
 import net.minestom.server.event.player.PlayerItemAnimationEvent;
 import net.minestom.server.event.player.PlayerTickEvent;
 import net.minestom.server.event.player.PlayerUseItemEvent;
+import net.minestom.server.event.trait.InstanceEvent;
 import net.minestom.server.event.trait.PlayerEvent;
 import net.minestom.server.item.Enchantment;
 import net.minestom.server.item.ItemStack;
@@ -40,8 +41,8 @@ public class ProjectileListener {
 	private static final Tag<Byte> MID_LOAD_SOUND_PLAYED = Tag.Byte("MidLoadSoundPlayed");
 	
 	// Please, don't look at the random hardcoded numbers in this class, even I am confused
-	public static EventNode<PlayerEvent> events(boolean legacy) {
-		EventNode<PlayerEvent> node = EventNode.type("projectile-events", EventFilter.PLAYER);
+	public static EventNode<InstanceEvent> events(boolean legacy) {
+		EventNode<InstanceEvent> node = EventNode.type("projectile-events", EventFilter.INSTANCE);
 		
 		node.addListener(EventListener.builder(PlayerUseItemEvent.class).handler(event -> {
 			ThreadLocalRandom random = ThreadLocalRandom.current();

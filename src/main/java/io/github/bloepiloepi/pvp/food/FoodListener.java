@@ -12,6 +12,7 @@ import net.minestom.server.event.EventFilter;
 import net.minestom.server.event.EventListener;
 import net.minestom.server.event.EventNode;
 import net.minestom.server.event.player.*;
+import net.minestom.server.event.trait.InstanceEvent;
 import net.minestom.server.event.trait.PlayerEvent;
 import net.minestom.server.instance.block.Block;
 import net.minestom.server.item.ItemStack;
@@ -26,8 +27,8 @@ import java.util.concurrent.ThreadLocalRandom;
 
 public class FoodListener {
 	
-	public static EventNode<PlayerEvent> events(boolean legacy) {
-		EventNode<PlayerEvent> node = EventNode.type("food-events", EventFilter.PLAYER);
+	public static EventNode<InstanceEvent> events(boolean legacy) {
+		EventNode<InstanceEvent> node = EventNode.type("food-events", EventFilter.INSTANCE);
 		
 		node.addListener(PlayerTickEvent.class, event -> {
 			if (Tracker.hungerManager.containsKey(event.getPlayer().getUuid())) {

@@ -30,6 +30,7 @@ import net.minestom.server.event.EventNode;
 import net.minestom.server.event.entity.EntityDamageEvent;
 import net.minestom.server.event.player.PlayerMoveEvent;
 import net.minestom.server.event.trait.EntityEvent;
+import net.minestom.server.event.trait.InstanceEvent;
 import net.minestom.server.gamedata.tags.Tag;
 import net.minestom.server.instance.block.Block;
 import net.minestom.server.item.ItemStack;
@@ -47,8 +48,8 @@ import java.util.concurrent.ThreadLocalRandom;
 
 public class DamageListener {
 	
-	public static EventNode<EntityEvent> events(boolean legacy) {
-		EventNode<EntityEvent> node = EventNode.type((legacy ? "legacy-" : "") + "damage-events", EventFilter.ENTITY);
+	public static EventNode<InstanceEvent> events(boolean legacy) {
+		EventNode<InstanceEvent> node = EventNode.type((legacy ? "legacy-" : "") + "damage-events", EventFilter.INSTANCE);
 		
 		node.addListener(EventListener.builder(EntityDamageEvent.class)
 				.handler(event -> handleEntityDamage(event, legacy))

@@ -31,6 +31,7 @@ import net.minestom.server.event.player.PlayerEatEvent;
 import net.minestom.server.event.player.PlayerPreEatEvent;
 import net.minestom.server.event.player.PlayerUseItemEvent;
 import net.minestom.server.event.trait.EntityEvent;
+import net.minestom.server.event.trait.InstanceEvent;
 import net.minestom.server.item.ItemStack;
 import net.minestom.server.item.Material;
 import net.minestom.server.item.metadata.PotionMeta;
@@ -53,8 +54,8 @@ public class PotionListener {
 
 	private static Double POTION_THROW_STRENGTH = 0.65;
 	
-	public static EventNode<EntityEvent> events(boolean legacy) {
-		EventNode<EntityEvent> node = EventNode.type("potion-events", EventFilter.ENTITY);
+	public static EventNode<InstanceEvent> events(boolean legacy) {
+		EventNode<InstanceEvent> node = EventNode.type("potion-events", EventFilter.INSTANCE);
 		
 		node.addListener(AddEntityToInstanceEvent.class, event -> {
 			if (event.getEntity() instanceof LivingEntity)
