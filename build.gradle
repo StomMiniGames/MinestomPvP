@@ -3,7 +3,11 @@ plugins {
     id 'maven-publish'
 }
 
-sourceCompatibility = 17
+java {
+    toolchain {
+        languageVersion.set(JavaLanguageVersion.of(17))
+    }
+}
 
 group 'io.github.bloepiloepi'
 version '1.0'
@@ -14,14 +18,14 @@ repositories {
     maven { url 'https://jitpack.io' }
 }
 
-java {
-    withJavadocJar()
-    withSourcesJar()
-}
+//java {
+//    withJavadocJar()
+//    withSourcesJar()
+//}
 
 dependencies {
-    compileOnly 'com.github.Minestom:Minestom:e11d15af0d'
-    testImplementation 'com.github.Minestom:Minestom:e11d15af0d'
+    compileOnly 'com.github.Minestom:Minestom:42195c536b'
+    testImplementation 'com.github.Minestom:Minestom:42195c536b'
 }
 
 publishing {
