@@ -22,7 +22,7 @@ public class CustomPotionEffect {
 	public static final int PERMANENT = 32767;
 	
 	private final Map<Attribute, AttributeModifier> attributeModifiers = new HashMap<>();
-	private Map<Attribute, AttributeModifier> legacyAttributeModifiers;
+	private final Map<Attribute, AttributeModifier> legacyAttributeModifiers = new HashMap<>();
 	private final PotionEffect potionEffect;
 	private final int color;
 	
@@ -45,8 +45,6 @@ public class CustomPotionEffect {
 	}
 	
 	public CustomPotionEffect addLegacyAttributeModifier(Attribute attribute, String uuid, float amount, AttributeOperation operation) {
-		if (legacyAttributeModifiers == null)
-			legacyAttributeModifiers = new HashMap<>();
 		legacyAttributeModifiers.put(attribute, new AttributeModifier(UUID.fromString(uuid), potionEffect.name(), amount, operation));
 		return this;
 	}
@@ -141,7 +139,7 @@ public class CustomPotionEffect {
 	
 	public void onApplied(LivingEntity entity, byte amplifier, boolean legacy) {
 		Map<Attribute, AttributeModifier> modifiers;
-		if (legacy && legacyAttributeModifiers != null) {
+		if (legacy) {
 			modifiers = legacyAttributeModifiers;
 		} else {
 			modifiers = attributeModifiers;
@@ -156,7 +154,7 @@ public class CustomPotionEffect {
 	
 	public void onRemoved(LivingEntity entity, byte amplifier, boolean legacy) {
 		Map<Attribute, AttributeModifier> modifiers;
-		if (legacy && legacyAttributeModifiers != null) {
+		if (legacy) {
 			modifiers = legacyAttributeModifiers;
 		} else {
 			modifiers = attributeModifiers;

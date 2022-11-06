@@ -50,7 +50,7 @@ import java.util.stream.Collectors;
 public class PotionListener {
 	private static final ItemStack GLASS_BOTTLE = ItemStack.of(Material.GLASS_BOTTLE);
 	
-	private static final Map<UUID, Map<PotionEffect, Integer>> durationLeftMap = new ConcurrentHashMap<>();
+	public static final Map<UUID, Map<PotionEffect, Integer>> durationLeftMap = new ConcurrentHashMap<>();
 
 	private static Double POTION_THROW_STRENGTH = 0.65;
 	
