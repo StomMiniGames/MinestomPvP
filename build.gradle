@@ -24,8 +24,8 @@ repositories {
 //}
 
 dependencies {
-    compileOnly 'com.github.Minestom:Minestom:42195c536b'
-    testImplementation 'com.github.Minestom:Minestom:42195c536b'
+    compileOnly 'com.github.Minestom:Minestom:eb06ba8664'
+    testImplementation 'com.github.Minestom:Minestom:eb06ba8664'
 }
 
 publishing {

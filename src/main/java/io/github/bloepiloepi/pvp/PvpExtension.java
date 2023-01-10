@@ -173,7 +173,7 @@ public class PvpExtension extends Extension {
 		CustomPotionEffects.registerAll();
 		CustomPotionTypes.registerAll();
 		
-//		Tracker.register(MinecraftServer.getGlobalEventHandler());
+		Tracker.register(MinecraftServer.getGlobalEventHandler());
 		MinecraftServer.getConnectionManager().setPlayerProvider(CustomPlayer::new);
 		
 		try {

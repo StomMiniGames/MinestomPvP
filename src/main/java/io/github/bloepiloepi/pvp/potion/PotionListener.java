@@ -58,12 +58,16 @@ public class PotionListener {
 		EventNode<InstanceEvent> node = EventNode.type("potion-events", EventFilter.INSTANCE);
 		
 		node.addListener(AddEntityToInstanceEvent.class, event -> {
+			event.getEntity().clearEffects();
 			if (event.getEntity() instanceof LivingEntity)
 				durationLeftMap.put(event.getEntity().getUuid(), new ConcurrentHashMap<>());
 		});
 		
-		node.addListener(RemoveEntityFromInstanceEvent.class, event ->
-				durationLeftMap.remove(event.getEntity().getUuid()));
+		node.addListener(RemoveEntityFromInstanceEvent.class, event -> {
+			durationLeftMap.remove(event.getEntity().getUuid());
+			event.getEntity().clearEffects();
+		});
+
 		
 		node.addListener(EntityTickEvent.class, event -> {
 			if (!(event.getEntity() instanceof LivingEntity entity)) return;
