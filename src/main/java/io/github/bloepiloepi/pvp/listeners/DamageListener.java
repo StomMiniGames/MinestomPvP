@@ -377,12 +377,10 @@ public class DamageListener {
 				// TODO: separate living entity categories
 				soundCategory = Sound.Source.HOSTILE;
 			}
-			
-			SoundEffectPacket damageSoundPacket = new SoundEffectPacket(
-					sound, soundCategory,
-					entity.getPosition(),
-					1.0f, 1.0f
-			);
+
+
+
+			SoundEffectPacket damageSoundPacket = new SoundEffectPacket(sound, 100f, soundCategory, entity.getPosition(), 1.0f, 1.0f, 0);
 			entity.sendPacketToViewersAndSelf(damageSoundPacket);
 		}
 		
