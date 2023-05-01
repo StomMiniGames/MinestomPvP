@@ -3,7 +3,7 @@ package io.github.bloepiloepi.pvp.potion.effect;
 import io.github.bloepiloepi.pvp.damage.CustomDamageType;
 import io.github.bloepiloepi.pvp.entity.EntityGroup;
 import io.github.bloepiloepi.pvp.entity.EntityUtils;
-import io.github.bloepiloepi.pvp.entity.Tracker;
+import io.github.bloepiloepi.pvp.food.HungerManager;
 import net.minestom.server.attribute.Attribute;
 import net.minestom.server.attribute.AttributeInstance;
 import net.minestom.server.attribute.AttributeModifier;
@@ -22,7 +22,7 @@ public class CustomPotionEffect {
 	public static final int PERMANENT = 32767;
 	
 	private final Map<Attribute, AttributeModifier> attributeModifiers = new HashMap<>();
-	private final Map<Attribute, AttributeModifier> legacyAttributeModifiers = new HashMap<>();
+	private Map<Attribute, AttributeModifier> legacyAttributeModifiers;
 	private final PotionEffect potionEffect;
 	private final int color;
 	
@@ -45,6 +45,8 @@ public class CustomPotionEffect {
 	}
 	
 	public CustomPotionEffect addLegacyAttributeModifier(Attribute attribute, String uuid, float amount, AttributeOperation operation) {
+		if (legacyAttributeModifiers == null)
+			legacyAttributeModifiers = new HashMap<>();
 		legacyAttributeModifiers.put(attribute, new AttributeModifier(UUID.fromString(uuid), potionEffect.name(), amount, operation));
 		return this;
 	}
@@ -65,14 +67,12 @@ public class CustomPotionEffect {
 			return;
 		}
 		
-		if (entity instanceof Player) {
+		if (entity instanceof Player player) {
 			if (potionEffect == PotionEffect.HUNGER) {
-				EntityUtils.addExhaustion((Player) entity, legacy ? 0.025F : 0.005F * (float) (amplifier + 1));
+				EntityUtils.addExhaustion(player, legacy ? 0.025F : 0.005F * (float) (amplifier + 1));
 				return;
 			} else if (potionEffect == PotionEffect.SATURATION) {
-				if (((Player) entity).isOnline()) {
-					Tracker.hungerManager.get(entity.getUuid()).add(amplifier + 1, 1.0F);
-				}
+				if (player.isOnline()) HungerManager.add(player, amplifier + 1, 1.0F);
 				return;
 			}
 		}
@@ -139,7 +139,7 @@ public class CustomPotionEffect {
 	
 	public void onApplied(LivingEntity entity, byte amplifier, boolean legacy) {
 		Map<Attribute, AttributeModifier> modifiers;
-		if (legacy) {
+		if (legacy && legacyAttributeModifiers != null) {
 			modifiers = legacyAttributeModifiers;
 		} else {
 			modifiers = attributeModifiers;
@@ -154,7 +154,7 @@ public class CustomPotionEffect {
 	
 	public void onRemoved(LivingEntity entity, byte amplifier, boolean legacy) {
 		Map<Attribute, AttributeModifier> modifiers;
-		if (legacy) {
+		if (legacy && legacyAttributeModifiers != null) {
 			modifiers = legacyAttributeModifiers;
 		} else {
 			modifiers = attributeModifiers;
@@ -165,6 +165,6 @@ public class CustomPotionEffect {
 	}
 	
 	private double adjustModifierAmount(byte amplifier, AttributeModifier modifier) {
-		return modifier.getAmount() * (float) (amplifier + 1);
+		return modifier.getAmount() * (amplifier + 1);
 	}
 }

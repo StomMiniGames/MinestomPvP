@@ -1,5 +1,7 @@
 package io.github.bloepiloepi.pvp.listeners;
 
+import io.github.bloepiloepi.pvp.config.ArmorToolConfig;
+import io.github.bloepiloepi.pvp.config.PvPConfig;
 import io.github.bloepiloepi.pvp.enums.ArmorMaterial;
 import io.github.bloepiloepi.pvp.enums.Tool;
 import net.minestom.server.attribute.Attribute;
@@ -7,13 +9,10 @@ import net.minestom.server.attribute.AttributeInstance;
 import net.minestom.server.attribute.AttributeModifier;
 import net.minestom.server.entity.EquipmentSlot;
 import net.minestom.server.entity.LivingEntity;
-import net.minestom.server.event.EventFilter;
-import net.minestom.server.event.EventListener;
 import net.minestom.server.event.EventNode;
 import net.minestom.server.event.item.EntityEquipEvent;
 import net.minestom.server.event.player.PlayerChangeHeldSlotEvent;
-import net.minestom.server.event.trait.EntityEvent;
-import net.minestom.server.event.trait.InstanceEvent;
+import net.minestom.server.event.trait.EntityInstanceEvent;
 import net.minestom.server.item.ItemStack;
 
 import java.util.ArrayList;
@@ -23,23 +22,22 @@ import java.util.UUID;
 
 public class ArmorToolListener {
 	
-	public static EventNode<InstanceEvent> events(boolean legacy) {
-		EventNode<InstanceEvent> node = EventNode.type("armor-tool-events", EventFilter.INSTANCE);
+	public static EventNode<EntityInstanceEvent> events(ArmorToolConfig config) {
+		EventNode<EntityInstanceEvent> node = EventNode.type("armor-tool-events", PvPConfig.ENTITY_INSTANCE_FILTER);
 		
-		node.addListener(EntityEquipEvent.class, event -> {
+		if (config.isArmorModifiersEnabled()) node.addListener(EntityEquipEvent.class, event -> {
 			if (!(event.getEntity() instanceof LivingEntity livingEntity)) return;
 			
 			if (event.getSlot().isArmor()) {
-				changeArmorModifiers(livingEntity, event.getSlot(), event.getEquippedItem(), legacy);
+				changeArmorModifiers(livingEntity, event.getSlot(), event.getEquippedItem(), config.isLegacy());
 			} else if (event.getSlot().isHand()) {
-				changeHandModifiers(livingEntity, event.getSlot(), event.getEquippedItem(), legacy);
+				changeHandModifiers(livingEntity, event.getSlot(), event.getEquippedItem(), config.isLegacy());
 			}
 		});
 		
-		node.addListener(EventListener.builder(PlayerChangeHeldSlotEvent.class).handler(event ->
+		if (config.isToolModifiersEnabled()) node.addListener(PlayerChangeHeldSlotEvent.class, event ->
 				changeHandModifiers(event.getPlayer(), EquipmentSlot.MAIN_HAND,
-						event.getPlayer().getInventory().getItemStack(event.getSlot()), legacy))
-				.build());
+						event.getPlayer().getInventory().getItemStack(event.getSlot()), config.isLegacy()));
 		
 		return node;
 	}

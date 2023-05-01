@@ -1,5 +1,7 @@
 package io.github.bloepiloepi.pvp.explosion;
 
+import io.github.bloepiloepi.pvp.config.ExplosionConfig;
+import io.github.bloepiloepi.pvp.config.PvPConfig;
 import io.github.bloepiloepi.pvp.utils.ItemUtils;
 import io.github.bloepiloepi.pvp.utils.SoundManager;
 import net.kyori.adventure.sound.Sound;
@@ -9,12 +11,10 @@ import net.minestom.server.entity.Entity;
 import net.minestom.server.entity.EquipmentSlot;
 import net.minestom.server.entity.LivingEntity;
 import net.minestom.server.entity.Player;
-import net.minestom.server.event.EventFilter;
 import net.minestom.server.event.EventNode;
 import net.minestom.server.event.player.PlayerBlockInteractEvent;
 import net.minestom.server.event.player.PlayerUseItemOnBlockEvent;
-import net.minestom.server.event.trait.EntityEvent;
-import net.minestom.server.event.trait.InstanceEvent;
+import net.minestom.server.event.trait.EntityInstanceEvent;
 import net.minestom.server.instance.Instance;
 import net.minestom.server.instance.block.Block;
 import net.minestom.server.item.ItemStack;
@@ -25,10 +25,10 @@ import org.jglrxavpok.hephaistos.nbt.NBT;
 
 public class ExplosionListener {
 	
-	public static EventNode<InstanceEvent> events() {
-		EventNode<InstanceEvent> node = EventNode.type("explosion-events", EventFilter.INSTANCE);
+	public static EventNode<EntityInstanceEvent> events(ExplosionConfig config) {
+		EventNode<EntityInstanceEvent> node = EventNode.type("explosion-events", PvPConfig.ENTITY_INSTANCE_FILTER);
 		
-		node.addListener(PlayerUseItemOnBlockEvent.class, event -> {
+		if (config.isTntEnabled()) node.addListener(PlayerUseItemOnBlockEvent.class, event -> {
 			ItemStack stack = event.getItemStack();
 			Instance instance = event.getInstance();
 			Point position = event.getPosition();
@@ -51,7 +51,7 @@ public class ExplosionListener {
 			}
 		});
 		
-		node.addListener(PlayerUseItemOnBlockEvent.class, event -> {
+		if (config.isCrystalEnabled()) node.addListener(PlayerUseItemOnBlockEvent.class, event -> {
 			if (event.getItemStack().material() != Material.END_CRYSTAL) return;
 			Instance instance = event.getInstance();
 			Block block = instance.getBlock(event.getPosition());
@@ -72,7 +72,7 @@ public class ExplosionListener {
 				event.getPlayer().setItemInHand(event.getHand(), event.getItemStack().consume(1));
 		});
 		
-		node.addListener(PlayerBlockInteractEvent.class, event -> {
+		if (config.isAnchorEnabled()) node.addListener(PlayerBlockInteractEvent.class, event -> {
 			Instance instance = event.getInstance();
 			Block block = instance.getBlock(event.getBlockPosition());
 			Player player = event.getPlayer();
@@ -104,7 +104,7 @@ public class ExplosionListener {
 			
 			if (charges == 0) return;
 			
-			if (!instance.getDimensionType().isRespawnAnchorSafe()) {
+			if (instance.getExplosionSupplier() != null && !instance.getDimensionType().isRespawnAnchorSafe()) {
 				instance.setBlock(event.getBlockPosition(), Block.AIR);
 				instance.explode(
 						(float) (event.getBlockPosition().x() + 0.5),

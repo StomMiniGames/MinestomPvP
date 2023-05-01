@@ -12,6 +12,7 @@ import net.minestom.server.entity.metadata.ProjectileMeta;
 import net.minestom.server.event.EventDispatcher;
 import net.minestom.server.event.entity.EntityDamageEvent;
 import net.minestom.server.event.entity.EntityShootEvent;
+import net.minestom.server.event.entity.projectile.ProjectileUncollideEvent;
 import net.minestom.server.instance.Chunk;
 import net.minestom.server.instance.Instance;
 import org.jetbrains.annotations.NotNull;
@@ -29,10 +30,10 @@ import java.util.stream.Stream;
  * Stolen from <a href="https://github.com/Minestom/Minestom/pull/496/">Pull Request #496</a> and edited
  */
 public class CustomEntityProjectile extends Entity {
-	
 	private final Entity shooter;
 	private final @Nullable Predicate<Entity> victimsPredicate;
 	private final boolean hitAnticipation;
+	protected boolean noClip;
 	
 	/**
 	 * Constructs new projectile.
@@ -57,19 +58,18 @@ public class CustomEntityProjectile extends Entity {
 	 * @param entityType type of the projectile.
 	 */
 	public CustomEntityProjectile(@Nullable Entity shooter, @NotNull EntityType entityType, boolean hitAnticipation) {
-		this(shooter, entityType, entity -> entity instanceof LivingEntity, hitAnticipation);
+		this(shooter, entityType, LivingEntity.class::isInstance, hitAnticipation);
 	}
 	
 	private void setup() {
 		super.hasPhysics = false;
 		if (getEntityMeta() instanceof ProjectileMeta) {
-			((ProjectileMeta) getEntityMeta()).setShooter(this.shooter);
+			((ProjectileMeta) getEntityMeta()).setShooter(shooter);
 		}
 	}
 	
-	@Nullable
-	public Entity getShooter() {
-		return this.shooter;
+	public @Nullable Entity getShooter() {
+		return shooter;
 	}
 	
 	/**
@@ -134,12 +134,22 @@ public class CustomEntityProjectile extends Entity {
 	
 	@Override
 	public void tick(long time) {
+		if (hitAnticipation && getAliveTicks() == 0) {
+			final State state = guessNextState(getPosition());
+			handleState(state);
+			if (state != State.Flying) return;
+		}
+		
 		final Pos posBefore = getPosition();
 		super.tick(time);
 		final Pos posNow = getPosition();
 		final State state = hitAnticipation ? guessNextState(posNow) : getState(posBefore, posNow, true);
+		handleState(state);
+	}
+	
+	protected void handleState(State state) {
 		if (state == State.Flying) {
-			if (hasVelocity()) {
+			if (!noClip && hasVelocity()) {
 				Vec direction = getVelocity().normalize();
 				double dx = direction.x();
 				double dy = direction.y();
@@ -155,18 +165,18 @@ public class CustomEntityProjectile extends Entity {
 			}
 			super.onGround = false;
 			setNoGravity(false);
+			EventDispatcher.call(new ProjectileUncollideEvent(this));
 			onUnstuck();
 		} else if (state == State.StuckInBlock) {
 			if (super.onGround) {
 				return;
 			}
+			EventDispatcher.call(new ProjectileBlockHitEvent(this));
 			super.onGround = true;
 			this.velocity = Vec.ZERO;
 			sendPacketToViewersAndSelf(getVelocityPacket());
 			setNoGravity(true);
 			onStuck();
-			
-			EventDispatcher.call(new ProjectileBlockHitEvent(this));
 		} else {
 			Entity entity = ((State.HitEntity) state).entity;
 			ProjectileEntityHitEvent event = new ProjectileEntityHitEvent(this, entity);
@@ -174,7 +184,7 @@ public class CustomEntityProjectile extends Entity {
 		}
 	}
 	
-	private State guessNextState(Pos posNow) {
+	protected State guessNextState(Pos posNow) {
 		return getState(posNow, posNow.add(getVelocity().mul(0.06)), false);
 	}
 	
@@ -187,6 +197,8 @@ public class CustomEntityProjectile extends Entity {
 	 */
 	@SuppressWarnings("ConstantConditions")
 	private State getState(Pos pos, Pos posNow, boolean shouldTeleport) {
+		if (noClip) return State.Flying;
+		
 		if (pos.samePoint(posNow)) {
 			if (instance.getBlock(posNow).isSolid()) {
 				return State.StuckInBlock;
@@ -253,7 +265,7 @@ public class CustomEntityProjectile extends Entity {
 		return State.Flying;
 	}
 	
-	private interface State {
+	protected interface State {
 		State Flying = new State() {
 		};
 		State StuckInBlock = new State() {

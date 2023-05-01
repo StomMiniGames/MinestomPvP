@@ -1,8 +1,14 @@
 package io.github.bloepiloepi.pvp.projectile;
 
+import io.github.bloepiloepi.pvp.config.AttackConfig;
+import io.github.bloepiloepi.pvp.config.ProjectileConfig;
+import io.github.bloepiloepi.pvp.config.PvPConfig;
 import io.github.bloepiloepi.pvp.enchantment.EnchantmentUtils;
 import io.github.bloepiloepi.pvp.entity.EntityUtils;
+import io.github.bloepiloepi.pvp.entity.PvpPlayer;
 import io.github.bloepiloepi.pvp.entity.Tracker;
+import io.github.bloepiloepi.pvp.listeners.AttackManager;
+import io.github.bloepiloepi.pvp.utils.FluidUtils;
 import io.github.bloepiloepi.pvp.utils.ItemUtils;
 import io.github.bloepiloepi.pvp.utils.SoundManager;
 import it.unimi.dsi.fastutil.Pair;
@@ -12,9 +18,9 @@ import net.minestom.server.coordinate.Pos;
 import net.minestom.server.coordinate.Vec;
 import net.minestom.server.entity.Entity;
 import net.minestom.server.entity.EquipmentSlot;
+import net.minestom.server.entity.LivingEntity;
 import net.minestom.server.entity.Player;
 import net.minestom.server.event.EventDispatcher;
-import net.minestom.server.event.EventFilter;
 import net.minestom.server.event.EventListener;
 import net.minestom.server.event.EventNode;
 import net.minestom.server.event.entity.EntityShootEvent;
@@ -22,8 +28,8 @@ import net.minestom.server.event.item.ItemUpdateStateEvent;
 import net.minestom.server.event.player.PlayerItemAnimationEvent;
 import net.minestom.server.event.player.PlayerTickEvent;
 import net.minestom.server.event.player.PlayerUseItemEvent;
-import net.minestom.server.event.trait.InstanceEvent;
-import net.minestom.server.event.trait.PlayerEvent;
+import net.minestom.server.event.trait.PlayerInstanceEvent;
+import net.minestom.server.instance.EntityTracker;
 import net.minestom.server.item.Enchantment;
 import net.minestom.server.item.ItemStack;
 import net.minestom.server.item.Material;
@@ -35,23 +41,26 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.Objects;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class ProjectileListener {
 	private static final Tag<Byte> START_SOUND_PLAYED = Tag.Byte("StartSoundPlayed");
 	private static final Tag<Byte> MID_LOAD_SOUND_PLAYED = Tag.Byte("MidLoadSoundPlayed");
+	public static final Tag<Long> RIPTIDE_START = Tag.Long("riptideStart");
 	
 	// Please, don't look at the random hardcoded numbers in this class, even I am confused
-	public static EventNode<InstanceEvent> events(boolean legacy) {
-		EventNode<InstanceEvent> node = EventNode.type("projectile-events", EventFilter.INSTANCE);
+	public static EventNode<PlayerInstanceEvent> events(ProjectileConfig config) {
+		EventNode<PlayerInstanceEvent> node = EventNode.type("projectile-events", PvPConfig.PLAYER_INSTANCE_FILTER);
 		
-		node.addListener(EventListener.builder(PlayerUseItemEvent.class).handler(event -> {
+		if (config.isFishingRodEnabled()) node.addListener(EventListener.builder(PlayerUseItemEvent.class).handler(event -> {
 			ThreadLocalRandom random = ThreadLocalRandom.current();
 			Player player = event.getPlayer();
 			
 			if (FishingBobber.fishingBobbers.containsKey(player.getUuid())) {
 				int durability = FishingBobber.fishingBobbers.get(player.getUuid()).retrieve();
-				ItemUtils.damageEquipment(player, event.getHand() == Player.Hand.MAIN ?
-						EquipmentSlot.MAIN_HAND : EquipmentSlot.OFF_HAND, durability);
+				if (!player.isCreative())
+					ItemUtils.damageEquipment(player, event.getHand() == Player.Hand.MAIN ?
+							EquipmentSlot.MAIN_HAND : EquipmentSlot.OFF_HAND, durability);
 				
 				SoundManager.sendToAround(player, SoundEvent.ENTITY_FISHING_BOBBER_RETRIEVE, Sound.Source.NEUTRAL,
 						1.0F, 0.4F / (random.nextFloat() * 0.4F + 0.8F));
@@ -59,7 +68,7 @@ public class ProjectileListener {
 				SoundManager.sendToAround(player, SoundEvent.ENTITY_FISHING_BOBBER_THROW, Sound.Source.NEUTRAL,
 						0.5F, 0.4F / (random.nextFloat() * 0.4F + 0.8F));
 				
-				FishingBobber bobber = new FishingBobber(player, legacy);
+				FishingBobber bobber = new FishingBobber(player, config.isLegacy());
 				FishingBobber.fishingBobbers.put(player.getUuid(), bobber);
 				
 				EntityShootEvent shootEvent = new EntityShootEvent(player, bobber,
@@ -69,7 +78,7 @@ public class ProjectileListener {
 					bobber.remove();
 					return;
 				}
-				double spread = shootEvent.getSpread() * (legacy ? 0.0075 : 0.0045);
+				double spread = shootEvent.getSpread() * (config.isLegacy() ? 0.0075 : 0.0045);
 				
 				Pos playerPos = player.getPosition();
 				float playerPitch = playerPos.pitch();
@@ -84,7 +93,7 @@ public class ProjectileListener {
 				
 				Vec velocity;
 				
-				if (!legacy) {
+				if (!config.isLegacy()) {
 					velocity = new Vec(
 							-xDir,
 							MathUtils.clamp(-(
@@ -138,12 +147,15 @@ public class ProjectileListener {
 			SoundEvent soundEvent;
 			CustomEntityProjectile projectile;
 			if (snowball) {
+				if (!config.isSnowballEnabled()) return;
 				soundEvent = SoundEvent.ENTITY_SNOWBALL_THROW;
 				projectile = new Snowball(player);
 			} else if (enderpearl) {
+				if (!config.isEnderPearlEnabled()) return;
 				soundEvent = SoundEvent.ENTITY_ENDER_PEARL_THROW;
 				projectile = new ThrownEnderpearl(player);
 			} else {
+				if (!config.isEggEnabled()) return;
 				soundEvent = SoundEvent.ENTITY_EGG_THROW;
 				projectile = new ThrownEgg(player);
 			}
@@ -179,14 +191,14 @@ public class ProjectileListener {
 				|| event.getItemStack().material() == Material.ENDER_PEARL)
 				.build());
 		
-		node.addListener(EventListener.builder(PlayerUseItemEvent.class).handler(event -> {
+		if (config.isCrossbowEnabled()) node.addListener(EventListener.builder(PlayerUseItemEvent.class).handler(event -> {
 			ItemStack stack = event.getItemStack();
 			if (stack.meta(CrossbowMeta.class).isCharged()) {
 				// Make sure the animation event is not called, because this is not an animation
 				event.setCancelled(true);
 				
 				stack = performCrossbowShooting(event.getPlayer(), event.getHand(), stack,
-						getCrossbowPower(stack), 1.0, legacy);
+						getCrossbowPower(stack), 1.0, config.isLegacy());
 				event.getPlayer().setItemInHand(event.getHand(), setCrossbowCharged(stack, false));
 			} else {
 				if (EntityUtils.getProjectile(event.getPlayer(),
@@ -197,8 +209,6 @@ public class ProjectileListener {
 							.withTag(START_SOUND_PLAYED, (byte) 0)
 							.withTag(MID_LOAD_SOUND_PLAYED, (byte) 0);
 					event.getPlayer().setItemInHand(event.getHand(), newStack);
-					
-					Tracker.itemUseHand.put(event.getPlayer().getUuid(), event.getHand());
 				}
 			}
 		}).filter(event -> event.getItemStack().material() == Material.CROSSBOW).build());
@@ -212,7 +222,7 @@ public class ProjectileListener {
 			}
 		});
 		
-		node.addListener(PlayerTickEvent.class, event -> {
+		if (config.isCrossbowEnabled()) node.addListener(PlayerTickEvent.class, event -> {
 			Player player = event.getPlayer();
 			if (EntityUtils.isChargingCrossbow(player)) {
 				Player.Hand hand = EntityUtils.getActiveHand(player);
@@ -220,7 +230,7 @@ public class ProjectileListener {
 				
 				int quickCharge = EnchantmentUtils.getLevel(Enchantment.QUICK_CHARGE, stack);
 				
-				long useDuration = System.currentTimeMillis() - Tracker.itemUseStartTime.get(player.getUuid());
+				long useDuration = System.currentTimeMillis() - player.getTag(Tracker.ITEM_USE_START_TIME);
 				long useTicks = useDuration / MinecraftServer.TICK_MS;
 				double progress = (getCrossbowUseDuration(stack) - useTicks) / (double) getCrossbowChargeDuration(stack);
 				
@@ -247,7 +257,7 @@ public class ProjectileListener {
 			}
 		});
 		
-		node.addListener(EventListener.builder(ItemUpdateStateEvent.class).handler(event -> {
+		if (config.isBowEnabled()) node.addListener(EventListener.builder(ItemUpdateStateEvent.class).handler(event -> {
 			Player player = event.getPlayer();
 			ItemStack stack = event.getItemStack();
 			boolean infinite = player.isCreative() || EnchantmentUtils.getLevel(Enchantment.INFINITY, stack) > 0;
@@ -262,12 +272,12 @@ public class ProjectileListener {
 				projectileSlot = -1;
 			}
 			
-			long useDuration = System.currentTimeMillis() - Tracker.itemUseStartTime.get(player.getUuid());
+			long useDuration = System.currentTimeMillis() - player.getTag(Tracker.ITEM_USE_START_TIME);
 			double power = getBowPower(useDuration);
 			if (power < 0.1) return;
 			
 			// Arrow creation
-			AbstractArrow arrow = createArrow(projectile, player, legacy);
+			AbstractArrow arrow = createArrow(projectile, player, config.isLegacy());
 			
 			if (power >= 1) {
 				arrow.setCritical(true);
@@ -321,14 +331,14 @@ public class ProjectileListener {
 			}
 		}).filter(event -> event.getItemStack().material() == Material.BOW).build());
 		
-		node.addListener(EventListener.builder(ItemUpdateStateEvent.class).handler(event -> {
+		if (config.isCrossbowEnabled()) node.addListener(EventListener.builder(ItemUpdateStateEvent.class).handler(event -> {
 			Player player = event.getPlayer();
 			ItemStack stack = event.getItemStack();
 			
 			int quickCharge = EnchantmentUtils.getLevel(Enchantment.QUICK_CHARGE, stack);
 			
 			if (quickCharge < 6) {
-				long useDuration = System.currentTimeMillis() - Tracker.itemUseStartTime.get(player.getUuid());
+				long useDuration = System.currentTimeMillis() - player.getTag(Tracker.ITEM_USE_START_TIME);
 				double power = getCrossbowPowerForTime(useDuration, stack);
 				if (!(power >= 1.0F) || stack.meta(CrossbowMeta.class).isCharged())
 					return;
@@ -344,6 +354,92 @@ public class ProjectileListener {
 			
 			player.setItemInHand(event.getHand(), stack);
 		}).filter(event -> event.getItemStack().material() == Material.CROSSBOW).build());
+		
+		if (config.isTridentEnabled()) node.addListener(EventListener.builder(ItemUpdateStateEvent.class).handler(event -> {
+			Player player = event.getPlayer();
+			ItemStack stack = event.getItemStack();
+			
+			long useDuration = System.currentTimeMillis() - player.getTag(Tracker.ITEM_USE_START_TIME);
+			int ticks = (int) ((useDuration / 1000.0) * 20);
+			if (ticks < 10) return;
+			
+			int riptide = EnchantmentUtils.getLevel(Enchantment.RIPTIDE, stack);
+			if (riptide > 0 && !FluidUtils.isTouchingWater(player)) return;
+			
+			ItemUtils.damageEquipment(player, event.getHand() == Player.Hand.MAIN ?
+					EquipmentSlot.MAIN_HAND : EquipmentSlot.OFF_HAND, 1);
+			if (riptide > 0) {
+				float yaw = player.getPosition().yaw();
+				float pitch = player.getPosition().pitch();
+				double h = -Math.sin(Math.toRadians(yaw)) * Math.cos(Math.toRadians(pitch));
+				double k = -Math.sin(Math.toRadians(pitch));
+				double l = Math.cos(Math.toRadians(yaw)) * Math.cos(Math.toRadians(pitch));
+				double length = Math.sqrt(h * h + k * k + l * l);
+				double n = 3.0 * ((1.0 + riptide) / 4.0);
+				
+				player.setTag(RIPTIDE_START, player.getAliveTicks());
+				player.setVelocity(player.getVelocity().add(new Vec(
+						h * (n / length),
+						k * (n / length),
+						l * (n / length)
+				).mul(MinecraftServer.TICK_PER_SECOND)));
+				
+				SoundEvent soundEvent = riptide >= 3 ? SoundEvent.ITEM_TRIDENT_RIPTIDE_3 :
+						(riptide == 2 ? SoundEvent.ITEM_TRIDENT_RIPTIDE_2 : SoundEvent.ITEM_TRIDENT_RIPTIDE_1);
+				if (player.getChunk() != null) player.getChunk().getViewersAsAudience().playSound(Sound.sound(
+						soundEvent, Sound.Source.PLAYER,
+						1.0f, 1.0f
+				), player);
+				
+				player.scheduleNextTick(entity -> player.refreshActiveHand(false, false, true));
+			} else {
+				ThrownTrident trident = new ThrownTrident(player, config.isLegacy(), stack);
+				Pos position = player.getPosition().add(0D, player.getEyeHeight(), 0D);
+				trident.setInstance(Objects.requireNonNull(player.getInstance()),
+						position.sub(0, 0.10000000149011612D, 0));
+				
+				Vec direction = position.direction();
+				position = position.add(direction).sub(0, 0.2, 0); //????????
+				
+				trident.shoot(position, 2.5, 1.0);
+				
+				Vec playerVel = player.getVelocity();
+				trident.setVelocity(trident.getVelocity().add(playerVel.x(),
+						player.isOnGround() ? 0.0 : playerVel.y(), playerVel.z()));
+				
+				if (player.getChunk() != null) player.getChunk().getViewersAsAudience().playSound(Sound.sound(
+						SoundEvent.ITEM_TRIDENT_THROW, Sound.Source.PLAYER,
+						1.0f, 1.0f
+				), trident);
+				if (!player.isCreative()) player.setItemInHand(event.getHand(), stack.consume(1));
+			}
+		}).filter(event -> event.getItemStack().material() == Material.TRIDENT).build());
+		
+		if (config.isTridentEnabled()) node.addListener(PlayerTickEvent.class, event -> {
+			if (event.getPlayer().getEntityMeta().isInRiptideSpinAttack()) {
+				Player player = event.getPlayer();
+				long ticks = player.getAliveTicks() - player.getTag(RIPTIDE_START);
+				AtomicBoolean stopRiptide = new AtomicBoolean(ticks >= 20);
+				
+				assert player.getInstance() != null;
+				player.getInstance().getEntityTracker().nearbyEntities(player.getPosition(), 5,
+						EntityTracker.Target.ENTITIES, entity -> {
+					if (entity != player && !stopRiptide.get() && entity instanceof LivingEntity
+							&& entity.getBoundingBox().intersectEntity(entity.getPosition(), player)) {
+						stopRiptide.set(true);
+						AttackManager.performAttack(player, entity, config.isLegacy() ?
+								AttackConfig.LEGACY : AttackConfig.DEFAULT);
+						if (player instanceof PvpPlayer pvpPlayer)
+							pvpPlayer.mulVelocity(-0.2);
+					}
+				});
+				
+				//TODO detect player bouncing against wall
+				
+				if (stopRiptide.get())
+					event.getPlayer().refreshActiveHand(false, false, false);
+			}
+		});
 		
 		return node;
 	}

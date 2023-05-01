@@ -33,37 +33,37 @@ public class CombatManager {
 	
 	public void prepareForDamage() {
 		nextFallLocation = null;
-		Block lastClimbedBlock = Tracker.lastClimbedBlock.get(player.getUuid());
+		Block lastClimbedBlock = player.getTag(Tracker.LAST_CLIMBED_BLOCK);
 		if (lastClimbedBlock == null) {
 			//TODO check for water at feet
 			return;
 		}
 		
-		if (lastClimbedBlock == Block.LADDER || lastClimbedBlock == Block.ACACIA_TRAPDOOR
-				|| lastClimbedBlock == Block.BIRCH_TRAPDOOR || lastClimbedBlock == Block.CRIMSON_TRAPDOOR
-				|| lastClimbedBlock == Block.IRON_TRAPDOOR || lastClimbedBlock == Block.DARK_OAK_TRAPDOOR
-				|| lastClimbedBlock == Block.JUNGLE_TRAPDOOR || lastClimbedBlock == Block.OAK_TRAPDOOR
-				|| lastClimbedBlock == Block.SPRUCE_TRAPDOOR || lastClimbedBlock == Block.WARPED_TRAPDOOR) {
+		if (lastClimbedBlock.compare(Block.LADDER) || lastClimbedBlock.compare(Block.ACACIA_TRAPDOOR)
+				|| lastClimbedBlock.compare(Block.BIRCH_TRAPDOOR) || lastClimbedBlock.compare(Block.CRIMSON_TRAPDOOR)
+				|| lastClimbedBlock.compare(Block.IRON_TRAPDOOR) || lastClimbedBlock.compare(Block.DARK_OAK_TRAPDOOR)
+				|| lastClimbedBlock.compare(Block.JUNGLE_TRAPDOOR) || lastClimbedBlock.compare(Block.OAK_TRAPDOOR)
+				|| lastClimbedBlock.compare(Block.SPRUCE_TRAPDOOR) || lastClimbedBlock.compare(Block.WARPED_TRAPDOOR)) {
 			nextFallLocation = "ladder";
 			return;
 		}
 		
-		if (lastClimbedBlock == Block.VINE) {
+		if (lastClimbedBlock.compare(Block.VINE)) {
 			nextFallLocation = "vines";
 			return;
 		}
 		
-		if (lastClimbedBlock == Block.WEEPING_VINES || lastClimbedBlock == Block.WEEPING_VINES_PLANT) {
+		if (lastClimbedBlock.compare(Block.WEEPING_VINES) || lastClimbedBlock.compare(Block.WEEPING_VINES_PLANT)) {
 			nextFallLocation = "weeping_vines";
 			return;
 		}
 		
-		if (lastClimbedBlock == Block.TWISTING_VINES || lastClimbedBlock == Block.TWISTING_VINES_PLANT) {
+		if (lastClimbedBlock.compare(Block.TWISTING_VINES) || lastClimbedBlock.compare(Block.TWISTING_VINES_PLANT)) {
 			nextFallLocation = "twisting_vines";
 			return;
 		}
 		
-		if (lastClimbedBlock == Block.SCAFFOLDING) {
+		if (lastClimbedBlock.compare(Block.SCAFFOLDING)) {
 			nextFallLocation = "scaffolding";
 			return;
 		}
@@ -75,7 +75,7 @@ public class CombatManager {
 		recheckStatus();
 		prepareForDamage();
 		
-		CombatEntry entry = new CombatEntry(damageType, damage, nextFallLocation, Tracker.fallDistance.get(player.getUuid()));
+		CombatEntry entry = new CombatEntry(damageType, damage, nextFallLocation, player.getTag(Tracker.FALL_DISTANCE));
 		entries.add(entry);
 		
 		lastDamageTime = System.currentTimeMillis();
@@ -99,7 +99,7 @@ public class CombatManager {
 		CombatEntry lastEntry = entries.get(entries.size() - 1);
 		
 		boolean fall = false;
-		if (lastEntry.damageType() == CustomDamageType.FALL) {
+		if (lastEntry.damageType().isFall()) {
 			heaviestFall = getHeaviestFall();
 			fall = heaviestFall != null;
 		}
@@ -108,7 +108,7 @@ public class CombatManager {
 			return lastEntry.damageType().getDeathMessage(player);
 		}
 		
-		if (heaviestFall.damageType() == CustomDamageType.FALL || heaviestFall.damageType() == CustomDamageType.OUT_OF_WORLD) {
+		if (heaviestFall.damageType().isFall() || heaviestFall.damageType() == CustomDamageType.OUT_OF_WORLD) {
 			return Component.translatable("death.fell.accident." + heaviestFall.getMessageFallLocation(), getEntityName());
 		}
 		
@@ -167,7 +167,7 @@ public class CombatManager {
 		for (int i = 0; i < entries.size(); i++) {
 			CombatEntry entry = entries.get(i);
 			
-			if ((entry.damageType() == CustomDamageType.FALL || entry.damageType().isOutOfWorld())
+			if ((entry.damageType().isFall() || entry.damageType().isOutOfWorld())
 					&& entry.getFallDistance() > 0.0 && (mostDamageEntry == null || entry.getFallDistance() > highestFall)) {
 				if (i > 0) {
 					mostDamageEntry = entries.get(i - 1);

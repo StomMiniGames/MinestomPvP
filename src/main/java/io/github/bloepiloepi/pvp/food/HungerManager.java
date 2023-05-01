@@ -1,5 +1,6 @@
 package io.github.bloepiloepi.pvp.food;
 
+import io.github.bloepiloepi.pvp.config.FoodConfig;
 import io.github.bloepiloepi.pvp.damage.CustomDamageType;
 import io.github.bloepiloepi.pvp.events.PlayerExhaustEvent;
 import io.github.bloepiloepi.pvp.events.PlayerRegenerateEvent;
@@ -7,83 +8,89 @@ import net.minestom.server.MinecraftServer;
 import net.minestom.server.entity.Player;
 import net.minestom.server.event.EventDispatcher;
 import net.minestom.server.item.Material;
+import net.minestom.server.tag.Tag;
 import net.minestom.server.world.Difficulty;
 
 public class HungerManager {
-	private final Player player;
-	private float exhaustion;
-	private int foodStarvationTimer;
+	public static final Tag<Float> EXHAUSTION = Tag.Float("exhaustion");
+	public static final Tag<Integer> STARVATION_TICKS = Tag.Integer("starvationTicks");
 	
-	public HungerManager(Player player) {
-		this.player = player;
-	}
-	
-	public void add(int food, float f) {
+	public static void add(Player player, int food, float exhaustion) {
 		player.setFood(Math.min(food + player.getFood(), 20));
-		player.setFoodSaturation(Math.min(player.getFoodSaturation() + (float)food * f * 2.0F, player.getFood()));
+		player.setFoodSaturation(Math.min(player.getFoodSaturation() + (float)food * exhaustion * 2.0F, player.getFood()));
 	}
 	
-	public void eat(Material material) {
+	public static void eat(Player player, Material material) {
 		if (material.isFood()) {
 			FoodComponent foodComponent = FoodComponents.fromMaterial(material);
 			assert foodComponent != null;
-			
-			this.add(foodComponent.getHunger(), foodComponent.getSaturationModifier());
+			add(player, foodComponent.getHunger(), foodComponent.getSaturationModifier());
 		}
 	}
 	
-	public void update(boolean legacy) {
+	public static void update(Player player, FoodConfig config) {
 		if (!player.getGameMode().canTakeDamage()) return;
-		
 		Difficulty difficulty = MinecraftServer.getDifficulty();
-		if (this.exhaustion > 4.0F) {
-			this.exhaustion -= 4.0F;
-			if (player.getFoodSaturation() > 0.0F) {
-				player.setFoodSaturation(Math.max(player.getFoodSaturation() - 1.0F, 0.0F));
-			} else if (difficulty != Difficulty.PEACEFUL) {
-				player.setFood(Math.max(player.getFood() - 1, 0));
+		
+		if (config.isNaturalExhaustionEnabled()) {
+			float exhaustion = player.getTag(EXHAUSTION);
+			if (exhaustion > 4) {
+				player.setTag(EXHAUSTION, exhaustion - 4);
+				if (player.getFoodSaturation() > 0) {
+					player.setFoodSaturation(Math.max(player.getFoodSaturation() - 1, 0));
+				} else if (difficulty != Difficulty.PEACEFUL) {
+					player.setFood(Math.max(player.getFood() - 1, 0));
+				}
 			}
 		}
 		
-		//Natural regeneration
-		if (player.getFoodSaturation() > 0.0F && player.getHealth() > 0.0F && player.getHealth() < player.getMaxHealth() && player.getFood() >= 20) {
-			++this.foodStarvationTimer;
-			if (this.foodStarvationTimer >= 10) {
-				float f = Math.min(player.getFoodSaturation(), 6.0F);
-				regenerate(f / 6.0F, f);
-				this.foodStarvationTimer = 0;
-			}
-		} else if (player.getFood() >= 18 && player.getHealth() > 0.0F && player.getHealth() < player.getMaxHealth()) {
-			++this.foodStarvationTimer;
-			if (this.foodStarvationTimer >= 80) {
-				regenerate(1.0F, 6.0F);
-				this.foodStarvationTimer = 0;
-			}
-		} else if (player.getFood() <= 0) {
-			++this.foodStarvationTimer;
-			if (this.foodStarvationTimer >= 80) {
-				if (player.getHealth() > 10.0F || difficulty == Difficulty.HARD || player.getHealth() > 1.0F && difficulty == Difficulty.NORMAL) {
-					player.damage(CustomDamageType.STARVE, 1.0F);
+		// Natural regeneration
+		if (config.isNaturalRegenerationEnabled()) {
+			int starvationTicks = player.getTag(STARVATION_TICKS);
+			if (!config.isLegacy() && player.getFoodSaturation() > 0 && player.getHealth() > 0
+					&& player.getHealth() < player.getMaxHealth() && player.getFood() >= 20) {
+				starvationTicks++;
+				if (starvationTicks >= 10) {
+					float amount = Math.min(player.getFoodSaturation(), 6);
+					regenerate(player, amount / 6, amount);
+					starvationTicks = 0;
 				}
-				
-				this.foodStarvationTimer = 0;
+			} else if (player.getFood() >= 18 && player.getHealth() > 0
+					&& player.getHealth() < player.getMaxHealth()) {
+				starvationTicks++;
+				if (starvationTicks >= 80) {
+					regenerate(player, 1, config.isLegacy() ? 3 : 6);
+					starvationTicks = 0;
+				}
+			} else if (player.getFood() <= 0) {
+				starvationTicks++;
+				if (starvationTicks >= 80) {
+					if (player.getHealth() > 10 || difficulty == Difficulty.HARD
+							|| ((player.getHealth() > 1) && (difficulty == Difficulty.NORMAL))) {
+						player.damage(CustomDamageType.STARVE, 1);
+					}
+					
+					starvationTicks = 0;
+				}
+			} else {
+				starvationTicks = 0;
 			}
-		} else {
-			this.foodStarvationTimer = 0;
+			
+			player.setTag(STARVATION_TICKS, starvationTicks);
 		}
 	}
 	
-	private void regenerate(float health, float exhaustion) {
+	private static void regenerate(Player player, float health, float exhaustion) {
 		PlayerRegenerateEvent event = new PlayerRegenerateEvent(player, health, exhaustion);
 		EventDispatcher.callCancellable(event, () -> {
 			player.setHealth(player.getHealth() + event.getAmount());
-			addExhaustion(event.getExhaustion());
+			addExhaustion(player, event.getExhaustion());
 		});
 	}
 	
-	public void addExhaustion(float exhaustion) {
+	public static void addExhaustion(Player player, float exhaustion) {
 		PlayerExhaustEvent playerExhaustEvent = new PlayerExhaustEvent(player, exhaustion);
-		EventDispatcher.callCancellable(playerExhaustEvent, () ->
-				this.exhaustion = Math.min(this.exhaustion + playerExhaustEvent.getAmount(), 40.0F));
+		EventDispatcher.callCancellable(playerExhaustEvent, () -> player.setTag(EXHAUSTION,
+				Math.min(player.getTag(EXHAUSTION) + playerExhaustEvent.getAmount(), 40)));
 	}
 }

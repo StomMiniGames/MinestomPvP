@@ -2,6 +2,7 @@ package io.github.bloepiloepi.pvp.damage;
 
 import io.github.bloepiloepi.pvp.entity.EntityUtils;
 import io.github.bloepiloepi.pvp.entity.Tracker;
+import io.github.bloepiloepi.pvp.listeners.DamageListener;
 import net.kyori.adventure.text.Component;
 import net.minestom.server.coordinate.Pos;
 import net.minestom.server.entity.Entity;
@@ -25,6 +26,7 @@ public class CustomDamageType extends DamageType {
 	public static final CustomDamageType STARVE = (new CustomDamageType("starve")).setBypassesArmor().setUnblockable();
 	public static final CustomDamageType CACTUS = new CustomDamageType("cactus");
 	public static final CustomDamageType FALL = (new CustomDamageType("fall")).setBypassesArmor().setFall();
+	public static final CustomDamageType ENDER_PEARL = (new CustomDamageType("fall")).setBypassesArmor().setFall();
 	public static final CustomDamageType FLY_INTO_WALL = (new CustomDamageType("flyIntoWall")).setBypassesArmor();
 	public static final CustomDamageType OUT_OF_WORLD = (new CustomDamageType("outOfWorld")).setBypassesArmor().setOutOfWorld();
 	public static final CustomDamageType GENERIC = (new CustomDamageType("generic")).setBypassesArmor();
@@ -282,7 +284,11 @@ public class CustomDamageType extends DamageType {
 	public static @Nullable LivingEntity getKillCredit(@NotNull Player killed) {
 		LivingEntity killer = Tracker.combatManager.get(killed.getUuid()).getKiller();
 		if (killer == null) {
-			killer = Tracker.lastDamagedBy.get(killed.getUuid());
+			Integer lastDamagedById = killed.getTag(DamageListener.LAST_DAMAGED_BY);
+			if (lastDamagedById != null) {
+				Entity entity = Entity.getEntity(lastDamagedById);
+				if (entity instanceof LivingEntity living) killer = living;
+			}
 		}
 		
 		return killer;

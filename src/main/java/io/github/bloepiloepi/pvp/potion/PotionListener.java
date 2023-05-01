@@ -1,5 +1,7 @@
 package io.github.bloepiloepi.pvp.potion;
 
+import io.github.bloepiloepi.pvp.config.PotionConfig;
+import io.github.bloepiloepi.pvp.config.PvPConfig;
 import io.github.bloepiloepi.pvp.entity.EntityUtils;
 import io.github.bloepiloepi.pvp.events.PotionVisibilityEvent;
 import io.github.bloepiloepi.pvp.food.FoodListener;
@@ -18,20 +20,16 @@ import net.minestom.server.entity.LivingEntity;
 import net.minestom.server.entity.Player;
 import net.minestom.server.entity.metadata.LivingEntityMeta;
 import net.minestom.server.event.EventDispatcher;
-import net.minestom.server.event.EventFilter;
 import net.minestom.server.event.EventListener;
 import net.minestom.server.event.EventNode;
 import net.minestom.server.event.entity.EntityDeathEvent;
 import net.minestom.server.event.entity.EntityPotionAddEvent;
 import net.minestom.server.event.entity.EntityPotionRemoveEvent;
 import net.minestom.server.event.entity.EntityTickEvent;
-import net.minestom.server.event.instance.AddEntityToInstanceEvent;
-import net.minestom.server.event.instance.RemoveEntityFromInstanceEvent;
 import net.minestom.server.event.player.PlayerEatEvent;
 import net.minestom.server.event.player.PlayerPreEatEvent;
 import net.minestom.server.event.player.PlayerUseItemEvent;
-import net.minestom.server.event.trait.EntityEvent;
-import net.minestom.server.event.trait.InstanceEvent;
+import net.minestom.server.event.trait.EntityInstanceEvent;
 import net.minestom.server.item.ItemStack;
 import net.minestom.server.item.Material;
 import net.minestom.server.item.metadata.PotionMeta;
@@ -51,23 +49,9 @@ public class PotionListener {
 	private static final ItemStack GLASS_BOTTLE = ItemStack.of(Material.GLASS_BOTTLE);
 	
 	public static final Map<UUID, Map<PotionEffect, Integer>> durationLeftMap = new ConcurrentHashMap<>();
-
-	private static Double POTION_THROW_STRENGTH = 0.65;
 	
-	public static EventNode<InstanceEvent> events(boolean legacy) {
-		EventNode<InstanceEvent> node = EventNode.type("potion-events", EventFilter.INSTANCE);
-		
-		node.addListener(AddEntityToInstanceEvent.class, event -> {
-			event.getEntity().clearEffects();
-			if (event.getEntity() instanceof LivingEntity)
-				durationLeftMap.put(event.getEntity().getUuid(), new ConcurrentHashMap<>());
-		});
-		
-		node.addListener(RemoveEntityFromInstanceEvent.class, event -> {
-			durationLeftMap.remove(event.getEntity().getUuid());
-			event.getEntity().clearEffects();
-		});
-
+	public static EventNode<EntityInstanceEvent> events(PotionConfig config) {
+		EventNode<EntityInstanceEvent> node = EventNode.type("potion-events", PvPConfig.ENTITY_INSTANCE_FILTER);
 		
 		node.addListener(EntityTickEvent.class, event -> {
 			if (!(event.getEntity() instanceof LivingEntity entity)) return;
@@ -82,11 +66,13 @@ public class PotionListener {
 				int durationLeft = potionMap.get(potion.getPotion().effect());
 				
 				if (durationLeft > 0) {
-					CustomPotionEffect customPotionEffect = CustomPotionEffects.get(potion.getPotion().effect());
-					byte amplifier = potion.getPotion().amplifier();
-					
-					if (customPotionEffect.canApplyUpdateEffect(durationLeft, amplifier)) {
-						customPotionEffect.applyUpdateEffect(entity, amplifier, legacy);
+					if (config.isUpdateEffectEnabled()) {
+						CustomPotionEffect customPotionEffect = CustomPotionEffects.get(potion.getPotion().effect());
+						byte amplifier = potion.getPotion().amplifier();
+						
+						if (customPotionEffect.canApplyUpdateEffect(durationLeft, amplifier)) {
+							customPotionEffect.applyUpdateEffect(entity, amplifier, config.isLegacy());
+						}
 					}
 					
 					potionMap.put(potion.getPotion().effect(), durationLeft - 1);
@@ -115,21 +101,25 @@ public class PotionListener {
 			}
 			potionMap.put(event.getPotion().effect(), event.getPotion().duration());
 			
-			CustomPotionEffect customPotionEffect = CustomPotionEffects.get(event.getPotion().effect());
-			customPotionEffect.onApplied(entity, event.getPotion().amplifier(), legacy);
+			if (config.isApplyEffectEnabled()) {
+				CustomPotionEffect customPotionEffect = CustomPotionEffects.get(event.getPotion().effect());
+				customPotionEffect.onApplied(entity, event.getPotion().amplifier(), config.isLegacy());
+			}
 			
-			updatePotionVisibility(entity);
+			updatePotionVisibility(entity, config.isParticlesEnabled());
 		});
 		
 		node.addListener(EntityPotionRemoveEvent.class, event -> {
 			if (!(event.getEntity() instanceof LivingEntity entity)) return;
 			
-			CustomPotionEffect customPotionEffect = CustomPotionEffects.get(event.getPotion().effect());
-			customPotionEffect.onRemoved(entity, event.getPotion().amplifier(), legacy);
+			if (config.isApplyEffectEnabled()) {
+				CustomPotionEffect customPotionEffect = CustomPotionEffects.get(event.getPotion().effect());
+				customPotionEffect.onRemoved(entity, event.getPotion().amplifier(), config.isLegacy());
+			}
 			
 			//Delay update 1 tick because we need to have the removing effect removed
 			MinecraftServer.getSchedulerManager()
-					.buildTask(() -> updatePotionVisibility(entity))
+					.buildTask(() -> updatePotionVisibility(entity, config.isParticlesEnabled()))
 					.delay(1, TimeUnit.SERVER_TICK)
 					.schedule();
 		});
@@ -138,23 +128,25 @@ public class PotionListener {
 				event.getEntity().clearEffects());
 		
 		node.addListener(EventListener.builder(PlayerPreEatEvent.class).handler(event -> {
+			if (!config.isDrinkingEnabled()) event.setCancelled(true);
 			event.setEatingTime(32L * MinecraftServer.TICK_MS); //Potion use time is always 32 ticks
-		}).filter(event -> event.getFoodItem().material() == Material.POTION).build());
+		}).filter(event -> event.getItemStack().material() == Material.POTION).build());
 		
 		node.addListener(EventListener.builder(PlayerEatEvent.class).handler(event -> {
 			Player player = event.getPlayer();
-			ItemStack stack = event.getFoodItem();
+			ItemStack stack = event.getItemStack();
 			
 			FoodListener.triggerEatSounds(player, null);
 			
-			List<Potion> potions = getAllPotions(stack.meta(PotionMeta.class), legacy);
+			List<Potion> potions = getAllPotions(stack.meta(PotionMeta.class), config.isLegacy());
 			
 			//Apply the potions
 			for (Potion potion : potions) {
 				CustomPotionEffect customPotionEffect = CustomPotionEffects.get(potion.effect());
 				
 				if (customPotionEffect.isInstant()) {
-					customPotionEffect.applyInstantEffect(player, player, player, potion.amplifier(), 1.0D, legacy);
+					if (config.isInstantEffectEnabled()) customPotionEffect.applyInstantEffect(
+							player, player, player, potion.amplifier(), 1.0D, config.isLegacy());
 				} else {
 					player.addEffect(potion);
 				}
@@ -168,50 +160,49 @@ public class PotionListener {
 					player.getInventory().addItemStack(GLASS_BOTTLE);
 				}
 			}
-		}).filter(event -> event.getFoodItem().material() == Material.POTION).build());
+		}).filter(event -> event.getItemStack().material() == Material.POTION).build());
 		
-		node.addListener(EventListener.builder(PlayerUseItemEvent.class).handler(event -> {
+		if (config.isSplashEnabled()) node.addListener(EventListener.builder(PlayerUseItemEvent.class).handler(event -> {
 			ThreadLocalRandom random = ThreadLocalRandom.current();
 			SoundManager.sendToAround(event.getPlayer(), SoundEvent.ENTITY_SPLASH_POTION_THROW, Sound.Source.PLAYER,
 					0.5f, 0.4f / (random.nextFloat() * 0.4f + 0.8f));
 			
-			throwPotion(event.getPlayer(), event.getItemStack(), event.getHand(), legacy);
+			throwPotion(event.getPlayer(), event.getItemStack(), event.getHand(), config.isLegacy());
 		}).filter(event -> event.getItemStack().material() == Material.SPLASH_POTION).build());
 		
-		node.addListener(EventListener.builder(PlayerUseItemEvent.class).handler(event -> {
+		if (config.isLingeringEnabled()) node.addListener(EventListener.builder(PlayerUseItemEvent.class).handler(event -> {
 			ThreadLocalRandom random = ThreadLocalRandom.current();
 			SoundManager.sendToAround(event.getPlayer(), SoundEvent.ENTITY_LINGERING_POTION_THROW, Sound.Source.NEUTRAL,
 					0.5f, 0.4f / (random.nextFloat() * 0.4f + 0.8f));
 			
-			throwPotion(event.getPlayer(), event.getItemStack(), event.getHand(), legacy);
+			throwPotion(event.getPlayer(), event.getItemStack(), event.getHand(), config.isLegacy());
 		}).filter(event -> event.getItemStack().material() == Material.LINGERING_POTION).build());
 		
 		return node;
 	}
-
-	private static void setPotionThrowStrength(Double newStrength) {
-		POTION_THROW_STRENGTH = newStrength;
-	}
-
+	
 	private static void throwPotion(Player player, ItemStack stack, Player.Hand hand, boolean legacy) {
 		ThrownPotion thrownPotion = new ThrownPotion(player, legacy);
 		thrownPotion.setItem(stack);
 		
 		Pos position = player.getPosition().add(0D, player.getEyeHeight() - 0.1, 0D);
-		
 		thrownPotion.setInstance(Objects.requireNonNull(player.getInstance()), position);
 		
 		Vec direction = position.direction();
 		position = position.add(direction.x(), direction.y() + 0.2, direction.z());
 		
-		thrownPotion.shoot(position, POTION_THROW_STRENGTH, 1.0);
+		thrownPotion.shoot(position, 0.5, 1.0);
+		
+		Vec playerVel = player.getVelocity();
+		thrownPotion.setVelocity(thrownPotion.getVelocity().add(playerVel.x(),
+				player.isOnGround() ? 0.0D : playerVel.y(), playerVel.z()));
 		
 		if (!player.isCreative()) {
 			player.setItemInHand(hand, stack.withAmount(stack.amount() - 1));
 		}
 	}
 	
-	public static void updatePotionVisibility(LivingEntity entity) {
+	public static void updatePotionVisibility(LivingEntity entity, boolean particlesEnabled) {
 		boolean ambient;
 		int color;
 		boolean invisible;
@@ -228,7 +219,11 @@ public class PotionListener {
 				invisible = false;
 			} else {
 				ambient = containsOnlyAmbientEffects(effects);
-				color = getPotionColor(effects.stream().map(TimedPotion::getPotion).collect(Collectors.toList()));
+				if (particlesEnabled) {
+					color = getPotionColor(effects.stream().map(TimedPotion::getPotion).collect(Collectors.toList()));
+				} else {
+					color = 0;
+				}
 				invisible = EntityUtils.hasPotionEffect(entity, PotionEffect.INVISIBILITY);
 			}
 		}

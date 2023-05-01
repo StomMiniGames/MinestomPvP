@@ -1,8 +1,7 @@
 package io.github.bloepiloepi.pvp.legacy;
 
-import io.github.bloepiloepi.pvp.entity.Tracker;
+import io.github.bloepiloepi.pvp.config.PvPConfig;
 import net.minestom.server.entity.Player;
-import net.minestom.server.event.EventFilter;
 import net.minestom.server.event.EventListener;
 import net.minestom.server.event.EventNode;
 import net.minestom.server.event.item.ItemUpdateStateEvent;
@@ -10,16 +9,20 @@ import net.minestom.server.event.player.PlayerChangeHeldSlotEvent;
 import net.minestom.server.event.player.PlayerHandAnimationEvent;
 import net.minestom.server.event.player.PlayerSwapItemEvent;
 import net.minestom.server.event.player.PlayerUseItemEvent;
-import net.minestom.server.event.trait.InstanceEvent;
-import net.minestom.server.event.trait.PlayerEvent;
+import net.minestom.server.event.trait.PlayerInstanceEvent;
 import net.minestom.server.item.ItemStack;
 import net.minestom.server.item.Material;
+import net.minestom.server.tag.Tag;
 
 public class SwordBlockHandler {
+	public static final Tag<Long> LAST_SWING_TIME = Tag.Long("lastSwingTime");
+	public static final Tag<Boolean> BLOCKING_SWORD = Tag.Boolean("blockingSword");
+	public static final Tag<ItemStack> BLOCK_REPLACEMENT_ITEM = Tag.ItemStack("blockReplacementItem");
+	
 	private static final ItemStack SHIELD = ItemStack.of(Material.SHIELD);
 	
-	public static EventNode<InstanceEvent> legacyEvents() {
-		EventNode<InstanceEvent> node = EventNode.type("legacy-sword-block", EventFilter.INSTANCE);
+	public static EventNode<PlayerInstanceEvent> events() {
+		EventNode<PlayerInstanceEvent> node = EventNode.type("legacy-sword-block", PvPConfig.PLAYER_INSTANCE_FILTER);
 		
 		node.addListener(EventListener.builder(PlayerUseItemEvent.class)
 				.handler(SwordBlockHandler::handleUseItem)
@@ -38,9 +41,8 @@ public class SwordBlockHandler {
 				.build());
 		
 		node.addListener(PlayerHandAnimationEvent.class, event -> {
-			if (event.getHand() == Player.Hand.MAIN) {
-				Tracker.lastSwingTime.put(event.getPlayer().getUuid(), System.currentTimeMillis());
-			}
+			if (event.getHand() == Player.Hand.MAIN)
+				event.getPlayer().setTag(LAST_SWING_TIME, System.currentTimeMillis());
 		});
 		
 		return node;
@@ -50,14 +52,14 @@ public class SwordBlockHandler {
 		Player player = event.getPlayer();
 		
 		if (event.getHand() == Player.Hand.MAIN && isSword(event.getItemStack())
-				&& !Tracker.blockingSword.get(player.getUuid())) {
-			long elapsedSwingTime = System.currentTimeMillis() - Tracker.lastSwingTime.get(player.getUuid());
+				&& !player.getTag(BLOCKING_SWORD)) {
+			long elapsedSwingTime = System.currentTimeMillis() - player.getTag(LAST_SWING_TIME);
 			if (elapsedSwingTime < 50) {
 				return;
 			}
 			
-			Tracker.blockReplacementItem.put(player.getUuid(), player.getItemInOffHand());
-			Tracker.blockingSword.put(player.getUuid(), true);
+			player.setTag(BLOCK_REPLACEMENT_ITEM, player.getItemInOffHand());
+			player.setTag(BLOCKING_SWORD, true);
 			
 			player.setItemInOffHand(SHIELD);
 			player.refreshActiveHand(true, true, false);
@@ -66,9 +68,10 @@ public class SwordBlockHandler {
 	}
 	
 	private static void unblock(Player player) {
-		if (Tracker.blockReplacementItem.containsKey(player.getUuid())) {
-			Tracker.blockingSword.put(player.getUuid(), false);
-			player.setItemInOffHand(Tracker.blockReplacementItem.get(player.getUuid()));
+		if (player.hasTag(BLOCK_REPLACEMENT_ITEM)) {
+			player.setTag(BLOCKING_SWORD, false);
+			player.setItemInOffHand(player.getTag(BLOCK_REPLACEMENT_ITEM));
+			player.removeTag(BLOCK_REPLACEMENT_ITEM);
 		}
 	}
 	
@@ -80,18 +83,14 @@ public class SwordBlockHandler {
 	
 	private static void handleSwapItem(PlayerSwapItemEvent event) {
 		Player player = event.getPlayer();
-		if (player.getItemInOffHand().material() == Material.SHIELD
-				&& Tracker.blockingSword.get(player.getUuid())) {
+		if (player.getItemInOffHand().material() == Material.SHIELD && player.getTag(BLOCKING_SWORD))
 			event.setCancelled(true);
-		}
 	}
 	
 	private static void handleChangeSlot(PlayerChangeHeldSlotEvent event) {
 		Player player = event.getPlayer();
-		if (player.getItemInOffHand().material() == Material.SHIELD
-				&& Tracker.blockingSword.get(player.getUuid())) {
+		if (player.getItemInOffHand().material() == Material.SHIELD && player.getTag(BLOCKING_SWORD))
 			unblock(player);
-		}
 	}
 	
 	private static boolean isSword(ItemStack stack) {

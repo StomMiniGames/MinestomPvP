@@ -1,9 +1,8 @@
 package io.github.bloepiloepi.pvp.entity;
 
 import io.github.bloepiloepi.pvp.damage.CustomDamageType;
-import io.github.bloepiloepi.pvp.enchantment.EnchantmentUtils;
 import io.github.bloepiloepi.pvp.enchantment.enchantments.ProtectionEnchantment;
-import io.github.bloepiloepi.pvp.enums.Tool;
+import io.github.bloepiloepi.pvp.food.HungerManager;
 import io.github.bloepiloepi.pvp.potion.PotionListener;
 import io.github.bloepiloepi.pvp.projectile.Arrow;
 import it.unimi.dsi.fastutil.Pair;
@@ -25,19 +24,21 @@ import net.minestom.server.item.Material;
 import net.minestom.server.potion.Potion;
 import net.minestom.server.potion.PotionEffect;
 import net.minestom.server.potion.TimedPotion;
+import net.minestom.server.tag.Tag;
 import net.minestom.server.utils.inventory.PlayerInventoryUtils;
 import net.minestom.server.utils.time.TimeUnit;
 import org.jetbrains.annotations.Nullable;
 
+import java.lang.reflect.Field;
 import java.time.Duration;
 import java.time.temporal.TemporalUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.Predicate;
 
 public class EntityUtils {
+	public static final Tag<Long> FIRE_EXTINGUISH_TIME = Tag.Long("fireExtinguishTime");
 	
 	public static boolean hasEffect(Entity entity, PotionEffect type) {
 		return entity.getActiveEffects().stream().anyMatch((effect) -> effect.getPotion().effect() == type);
@@ -69,7 +70,7 @@ public class EntityUtils {
 		if (duration.toMillis() > 0) {
 			EventDispatcher.callCancellable(entityFireEvent, () -> entity.setOnFire(true));
 		}
-		// Tracker.fireExtinguishTime is updated by event listener
+		// FIRE_EXTINGUISH_TIME is updated by event listener
 	}
 	
 	public static void setOnFireForSeconds(Entity entity, int seconds) {
@@ -82,7 +83,7 @@ public class EntityUtils {
 		}
 		int millis = ticks * MinecraftServer.TICK_MS;
 		
-		long fireExtinguishTime = Tracker.fireExtinguishTime.getOrDefault(entity.getUuid(), 0L);
+		long fireExtinguishTime = entity.hasTag(FIRE_EXTINGUISH_TIME) ? entity.getTag(FIRE_EXTINGUISH_TIME) : 0;
 		if (System.currentTimeMillis() + millis > fireExtinguishTime) {
 			setFireForDuration(entity, millis, TimeUnit.MILLISECOND);
 		}
@@ -148,39 +149,6 @@ public class EntityUtils {
 		return ((LivingEntityMeta) entity.getEntityMeta()).getActiveHand();
 	}
 	
-	public static void takeShieldHit(LivingEntity entity, LivingEntity attacker, boolean applyKnockback) {
-		if (applyKnockback) {
-			Pos entityPos = entity.getPosition();
-			Pos attackerPos = attacker.getPosition();
-			attacker.takeKnockback(0.5F, attackerPos.x() - entityPos.x(), attackerPos.z() - entityPos.z());
-		}
-		
-		if (!(entity instanceof Player)) return;
-		
-		Tool tool = Tool.fromMaterial(attacker.getItemInMainHand().material());
-		if (tool != null && tool.isAxe()) {
-			disableShield((Player) entity, true); //For some reason the vanilla server always passes true
-		}
-	}
-	
-	public static void disableShield(Player player, boolean sprinting) {
-		float chance = 0.25F + (float) EnchantmentUtils.getBlockEfficiency(player) * 0.05F;
-		if (sprinting) {
-			chance += 0.75F;
-		}
-		
-		if (ThreadLocalRandom.current().nextFloat() < chance) {
-			Tracker.setCooldown(player, Material.SHIELD, 100);
-			
-			//Shield disable status
-			player.triggerStatus((byte) 30);
-			player.triggerStatus((byte) 9);
-			
-			Player.Hand hand = player.getEntityMeta().getActiveHand();
-			player.refreshActiveHand(false, hand == Player.Hand.OFF, false);
-		}
-	}
-	
 	public static Iterable<ItemStack> getArmorItems(LivingEntity entity) {
 		List<ItemStack> list = new ArrayList<>();
 		for (EquipmentSlot slot : EquipmentSlot.values()) {
@@ -194,15 +162,15 @@ public class EntityUtils {
 	
 	public static void addExhaustion(Player player, float exhaustion) {
 		if (!player.isInvulnerable() && player.getGameMode().canTakeDamage() && player.isOnline()) {
-			Tracker.hungerManager.get(player.getUuid()).addExhaustion(exhaustion);
+			HungerManager.addExhaustion(player, exhaustion);
 		}
 	}
 	
 	//TODO needs improving
-	public static boolean isClimbing(Player player) {
-		if (player.getGameMode() == GameMode.SPECTATOR) return false;
+	public static boolean isClimbing(Entity entity) {
+		if (entity instanceof Player player && player.getGameMode() == GameMode.SPECTATOR) return false;
 		
-		Block block = Objects.requireNonNull(player.getInstance()).getBlock(player.getPosition());
+		Block block = Objects.requireNonNull(entity.getInstance()).getBlock(entity.getPosition());
 		return block.compare(Block.LADDER) || block.compare(Block.VINE) || block.compare(Block.TWISTING_VINES)
 				|| block.compare(Block.TWISTING_VINES_PLANT) || block.compare(Block.WEEPING_VINES)
 				|| block.compare(Block.WEEPING_VINES_PLANT) || block.compare(Block.ACACIA_TRAPDOOR)
@@ -303,6 +271,18 @@ public class EntityUtils {
 			String name = entity.getEntityType().name();
 			name = name.substring(0, 1).toUpperCase() + name.substring(1).toLowerCase();
 			return Component.text(name).hoverEvent(hoverEvent);
+		}
+	}
+
+	public static Pos getPreviousPosition(Entity entity) {
+		// Use reflection to get previousPosition field
+		try {
+			Field field = Entity.class.getDeclaredField("previousPosition");
+			field.setAccessible(true);
+			return (Pos) field.get(entity);
+		} catch (NoSuchFieldException | IllegalAccessException e) {
+			e.printStackTrace();
+			return null;
 		}
 	}
 }
