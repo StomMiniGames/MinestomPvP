@@ -58,7 +58,19 @@ public class FallDamageHandler {
 			entity.setTag(Tracker.FALL_DISTANCE, 0.0);
 			
 			if (entity instanceof Player player && !player.getGameMode().canTakeDamage()) return;
+
 			int damage = getFallDamage(entity, fallDistance);
+			Block block = entity.getInstance().getBlock(newPosition);
+			Block blockAbove = entity.getInstance().getBlock(newPosition.add(0, 1, 0));
+			Block blockBelow = entity.getInstance().getBlock(newPosition.add(0, -1, 0));
+
+			if (
+					(block.compare(Block.SLIME_BLOCK) && !entity.isSneaking())
+						|| (blockBelow.compare(Block.SLIME_BLOCK) && !entity.isSneaking())
+						|| block.compare(Block.WATER)
+						|| blockAbove.compare(Block.WATER)
+			) damage = 0;
+
 			if (damage > 0) {
 				if (entity instanceof Player player) {
 					entity.getViewersAsAudience().playSound(Sound.sound(
