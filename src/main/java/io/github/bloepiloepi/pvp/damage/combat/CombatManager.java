@@ -85,8 +85,6 @@ public class CombatManager {
 			inCombat = true;
 			combatStartTime = System.currentTimeMillis();
 			combatEndTime = combatStartTime;
-			
-			onEnterCombat();
 		}
 	}
 	
@@ -211,10 +209,6 @@ public class CombatManager {
 		takingDamage = false;
 		inCombat = false;
 		
-		if (wasInCombat) {
-			onLeaveCombat();
-		}
-		
 		entries.clear();
 	}
 	
@@ -225,17 +219,6 @@ public class CombatManager {
 	
 	public Component getEntityName() {
 		return EntityUtils.getName(player);
-	}
-	
-	@SuppressWarnings("UnstableApiUsage")
-	private void onEnterCombat() {
-		player.getPlayerConnection().sendPacket(new EnterCombatEventPacket());
-	}
-	
-	@SuppressWarnings("UnstableApiUsage")
-	private void onLeaveCombat() {
-		int duration = (int) (getCombatDuration() / MinecraftServer.TICK_MS);
-		player.getPlayerConnection().sendPacket(new EndCombatEventPacket(duration, getKillerId()));
 	}
 	
 	public List<CombatEntry> getEntries() {

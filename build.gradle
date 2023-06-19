@@ -19,7 +19,7 @@ java {
 }
 
 dependencies {
-    compileOnly 'com.github.Minestom.Minestom:Minestom:85febebd09'
+    compileOnly "dev.hollowcube:minestom-ce:8a5c610b7b"
     testImplementation 'com.github.Minestom.Minestom:Minestom:85febebd09'
     testImplementation 'com.github.TogAr2:MinestomFluids:b237b13a4b'
 }
