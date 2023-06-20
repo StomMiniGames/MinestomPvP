@@ -308,11 +308,11 @@ public class DamageListener {
 		
 		// Process armor and effects
 		amount = getDamageWithProtection(entity, type, amount, config);
-		
-		FinalDamageEvent finalDamageEvent = new FinalDamageEvent(entity, type, amount, config.getInvulnerabilityTicks());
+
+		FinalDamageEvent finalDamageEvent = new FinalDamageEvent(entity, type, amount, config.getInvulnerabilityTicks(), hurtSoundAndAnimation);
 		EventDispatcher.call(finalDamageEvent);
 		amount = finalDamageEvent.getDamage();
-		
+
 		boolean register = config.isLegacy() || finalDamageEvent.getDamage() > 0;
 		if (register && entity instanceof Player)
 			Tracker.combatManager.get(entity.getUuid()).recordDamage(type, amount);
