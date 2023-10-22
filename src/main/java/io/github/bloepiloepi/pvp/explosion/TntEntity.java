@@ -14,6 +14,8 @@ import java.util.concurrent.ThreadLocalRandom;
 
 public class TntEntity extends Entity {
 	private final LivingEntity causingEntity;
+
+	private float strength = 4.0f;
 	
 	public TntEntity(@Nullable LivingEntity causingEntity) {
 		super(EntityType.TNT);
@@ -32,7 +34,15 @@ public class TntEntity extends Entity {
 	public void setFuse(int fuse) {
 		((PrimedTntMeta) getEntityMeta()).setFuseTime(fuse);
 	}
-	
+
+	public float getStrength() {
+		return strength;
+	}
+
+	public void setStrength(float strength) {
+		this.strength = strength;
+	}
+
 	@Override
 	public void update(long time) {
 		if (onGround) velocity = velocity.mul(0.7, -0.5, 0.7);
@@ -44,7 +54,7 @@ public class TntEntity extends Entity {
 					(float) position.x(),
 					(float) EntityUtils.getBodyY(this, 0.0625),
 					(float) position.z(),
-					4.0f,
+					getStrength(),
 					causingEntity == null ? null
 							: NBT.Compound(NBT -> NBT.setString("causingEntity", causingEntity.getUuid().toString()))
 			);

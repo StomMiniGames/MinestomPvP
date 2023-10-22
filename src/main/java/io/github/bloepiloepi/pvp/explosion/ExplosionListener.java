@@ -124,10 +124,19 @@ public class ExplosionListener {
 	public static void primeTnt(Instance instance, Point blockPosition, @Nullable LivingEntity causingEntity) {
 		primeTnt(instance, blockPosition, causingEntity, 80);
 	}
-	
+
 	public static void primeTnt(Instance instance, Point blockPosition, @Nullable LivingEntity causingEntity, int fuse) {
+		primeTnt(instance, blockPosition, causingEntity, fuse, 4.0f);
+	}
+
+	public static void primeTnt(Instance instance, Point blockPosition, @Nullable LivingEntity causingEntity, float strength) {
+		primeTnt(instance, blockPosition, causingEntity, 80, strength);
+	}
+	
+	public static void primeTnt(Instance instance, Point blockPosition, @Nullable LivingEntity causingEntity, int fuse, float strength) {
 		TntEntity entity = new TntEntity(causingEntity);
 		if (fuse != 80) entity.setFuse(fuse);
+		if(strength != 4.0f) entity.setStrength(strength);
 		entity.setInstance(instance, blockPosition.add(0.5, 0, 0.5));
 		SoundManager.sendToAround(
 				instance, entity.getPosition(),
