@@ -1,9 +1,14 @@
-# MinestomPvP
+# MinestomPvP (StomMiniGames Edition)
 
 [![standard-readme compliant](https://img.shields.io/badge/readme%20style-standard-brightgreen.svg?style=flat-square)](https://github.com/RichardLitt/standard-readme)
-[![license](https://img.shields.io/github/license/TogAr2/MinestomPvP.svg?style=flat-square)](LICENSE)
+[![license](https://img.shields.io/github/license/StomMiniGames/MinestomPvP.svg?style=flat-square)](LICENSE)
 [![platform](https://img.shields.io/badge/platform-Minestom-ff69b4?style=flat-square)](https://github.com/Minestom/Minestom)
-[![](https://jitpack.io/v/TogAr2/MinestomPvP.svg?style=flat-square)](https://jitpack.io/#TogAr2/MinestomPvP)
+[![](https://jitpack.io/v/StomMiniGames/MinestomPvP.svg?style=flat-square)](https://jitpack.io/#StomMiniGames/MinestomPvP)
+
+## Fork
+This is a fork of [MinestomPvP](https://github.com/TogAr2/MinestomPvP), which has added features required for StomMinigames projects. New features include:
+
+- Custom TNT strength
 
 MinestomPvP is an extension for Minestom.
 It tries to mimic vanilla (and pre-1.9) PvP as good as possible, while also focusing on customizability and usability.
@@ -11,7 +16,7 @@ It tries to mimic vanilla (and pre-1.9) PvP as good as possible, while also focu
 But, MinestomPvP does not only provide PvP, it also provides everything around it (e.g., status effects and food).
 You can easily choose which features you want to use.
 
-The maven repository is available on [jitpack](https://jitpack.io/#TogAr2/MinestomPvP).
+The maven repository is available on [jitpack](https://jitpack.io/#StomMiniGames/MinestomPvP).
 
 **You might not want to put this extension in your extensions folder, more information at [usage](#usage).**
 
