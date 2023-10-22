@@ -308,11 +308,11 @@ public class DamageListener {
 		
 		// Process armor and effects
 		amount = getDamageWithProtection(entity, type, amount, config);
-		
-		FinalDamageEvent finalDamageEvent = new FinalDamageEvent(entity, type, amount, config.getInvulnerabilityTicks());
+
+		FinalDamageEvent finalDamageEvent = new FinalDamageEvent(entity, type, amount, config.getInvulnerabilityTicks(), hurtSoundAndAnimation);
 		EventDispatcher.call(finalDamageEvent);
 		amount = finalDamageEvent.getDamage();
-		
+
 		boolean register = config.isLegacy() || finalDamageEvent.getDamage() > 0;
 		if (register && entity instanceof Player)
 			Tracker.combatManager.get(entity.getUuid()).recordDamage(type, amount);
@@ -373,9 +373,9 @@ public class DamageListener {
 		
 		// Play sound (copied from Minestom, because of complications with cancelling)
 		if (config.isSoundsEnabled() && sound != null) entity.sendPacketToViewersAndSelf(new SoundEffectPacket(
-				sound, entity instanceof Player ? Sound.Source.PLAYER : Sound.Source.HOSTILE,
+				sound, null, entity instanceof Player ? Sound.Source.PLAYER : Sound.Source.HOSTILE,
 				entity.getPosition(),
-				1.0f, 1.0f
+				1.0f, 1.0f, 0
 		));
 		
 		if (death && !event.isCancelled()) {

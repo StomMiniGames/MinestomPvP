@@ -17,15 +17,17 @@ public class FinalDamageEvent implements EntityInstanceEvent, CancellableEvent {
 	private final CustomDamageType damageType;
 	private float damage;
 	private int invulnerabilityTicks;
+	private boolean hurtSoundAndAnimation;
 	
 	private boolean cancelled;
 	
 	public FinalDamageEvent(@NotNull LivingEntity entity, @NotNull CustomDamageType damageType,
-	                        float damage, int invulnerabilityTicks) {
+	                        float damage, int invulnerabilityTicks, boolean hurtSoundAndAnimation) {
 		this.entity = entity;
 		this.damageType = damageType;
 		this.damage = damage;
 		this.invulnerabilityTicks = invulnerabilityTicks;
+		this.hurtSoundAndAnimation = hurtSoundAndAnimation;
 	}
 	
 	@NotNull
@@ -81,7 +83,11 @@ public class FinalDamageEvent implements EntityInstanceEvent, CancellableEvent {
 	public void setInvulnerabilityTicks(int invulnerabilityTicks) {
 		this.invulnerabilityTicks = invulnerabilityTicks;
 	}
-	
+
+	public boolean hasHurtSoundAndAnimation() {
+		return hurtSoundAndAnimation;
+	}
+
 	/**
 	 * Checks if the damage will kill the entity.
 	 * <br><br>
